@@ -36,4 +36,4 @@ You can't run it with live calendar data because the calendar is private to the 
 ```
 
 ## How do I join the ski lease?
-Contact me.
+Contact me. I'm ski boy bob on gmail

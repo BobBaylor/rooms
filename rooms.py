@@ -158,16 +158,17 @@ def main(opts):
     rooms =  ('in-law', 'master', 'middle',  'bunk',  'loft')
     memberCnts = {}
     for e in datesRaw:
-        memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms}              # init the memberCnts with the first name {rooms}
+        memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms+('total',)}              # init the memberCnts with the first name {rooms}
 
     for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+        memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1 
         for r in rooms:
             if r in e['description'].lower():
                 e[r] = gevent_to_member_name(e)   # just the first name
                 memberCnts[ e[r] ][r] = memberCnts[ e[r] ][r]+1
             else:
                 e[r] = ''
-        if all([not bool(e[r]) for r in rooms]):                    # catch members in cabin but not assigned to any room
+        if all([not bool(e[r]) for r in rooms]) and not opts['--future']:                    # catch members in cabin but not assigned to any room
             print '** On %s where did %s sleep?'%(e['night'],e['summary'])
     # datesRaw[] is now a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'', 'midle':'', ...}
     # memberCnts{} = {'Bob':{'in-law':1, 'master':0, 'middle':0,  'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
@@ -206,9 +207,9 @@ def main(opts):
             print '%10s '%(e['night'])+' '.join(['%16s'%e[r] for r in rooms])
 
 
-    print('\n%10s'%('Counts')+' '.join(['%8s'%r for r in rooms]) )  # show how many times each member has slept in each room
+    print '\n%4s%10s'%('','Counts')+' '.join(['%8s'%r for r in rooms])   # show how many times each member has slept in each room
     for c in memberCnts:
-        print '%10s'%(c)+' '.join(['%8s'%('%d'%memberCnts[c][r] if memberCnts[c][r] else '' ) for r in rooms])
+        print '%4d%10s'%(memberCnts[c]['total'],c)+' '.join(['%8s'%('%d'%memberCnts[c][r] if memberCnts[c][r] else '' ) for r in rooms])
 
 
 

@@ -10,7 +10,7 @@
 lcUuseStr = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--year=<Y>] [--debug] [--offline] [--raw] [--nights] [--future] [--guests]
+  rooms  [--year=<Y>] [--debug] [--offline] [--raw] [--nights] [--future] [--guests] [--whosup]
   rooms  -h | --help
   rooms  -v | --version
 
@@ -22,6 +22,7 @@ lcUuseStr = """
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
   -r --raw                show the raw calendar events
+  -w --whosup             show who's coming up in the coming 7 days
   -y --year <Y>           year season starts [default: 2016]
   -v --version            show the version
     """
@@ -127,7 +128,12 @@ def main(opts):
     else:
         credentials = get_credentials(opts)
         day0 = datetime.datetime(int(opts['--year']),12,1).isoformat()+'Z'
-        dayLast = None if opts['--future'] else datetime.datetime.utcnow().isoformat() + 'Z'
+        dayLast = datetime.datetime.utcnow().isoformat() + 'Z'
+        if opts['--future']:
+            dayLast = None
+        if opts['--whosup']:
+            dayThis = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+            dayLast = dayThis.isoformat() + 'Z'
         events = get_events(credentials,timeMin=day0,timeMax=dayLast, singleEvents=True, orderBy='startTime',calendarId="primary")
         datesRaw = []
         for event in events:
@@ -161,15 +167,19 @@ def main(opts):
         memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms+('total',)}              # init the memberCnts with the first name {rooms}
 
     for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
-        memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1 
+        memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1
         for r in rooms:
             if r in e['description'].lower():
                 e[r] = gevent_to_member_name(e)   # just the first name
                 memberCnts[ e[r] ][r] = memberCnts[ e[r] ][r]+1
             else:
                 e[r] = ''
-        if all([not bool(e[r]) for r in rooms]) and not opts['--future']:                    # catch members in cabin but not assigned to any room
-            print '** On %s where did %s sleep?'%(e['night'],e['summary'])
+        # todo: limit this next thing to the next 7 days
+        if all([not bool(e[r]) for r in rooms]):
+            if not (opts['--future'] or opts['--whosup']):        # catch members in cabin but not assigned to any room
+                print '** On %s where did %s sleep?'%(e['night'],e['summary'])
+            if opts['--whosup']:            # show me the who's up
+                print '   %s %s'%(e['night'],e['summary'])
     # datesRaw[] is now a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'', 'midle':'', ...}
     # memberCnts{} = {'Bob':{'in-law':1, 'master':0, 'middle':0,  'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
 

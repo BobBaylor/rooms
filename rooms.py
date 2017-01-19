@@ -2,7 +2,6 @@
 # quickstart
 # from  https://developers.google.com/google-apps/calendar/quickstart/python
 # I had to use easytools to install instead of pip
-# print '\n'.join([rdln.get_history_item(i) for i in range(1,rdln.get_current_history_length())])
 
 
 # from __future__ import print_function  # sorry, I don't really like the future
@@ -10,7 +9,7 @@
 lcUuseStr = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--year=<Y>] [--debug] [--offline] [--raw] [--nights] [--future] [--guests] [--whosup]
+  rooms  [--year=<Y>] [--debug] [--offline] [--raw] [--nights] [--future] [--member=<M>] [--guests] [--whosup]
   rooms  -h | --help
   rooms  -v | --version
 
@@ -19,12 +18,13 @@ lcUuseStr = """
   -d --debug              show stuff
   -f --future             show the future
   -g --guests             show raw nights with guests
+  -m --member <M>         show raw nights with guests for a single member
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
   -r --raw                show the raw calendar events
+  -v --version            show the version
   -w --whosup             show who's coming up in the coming 7 days
   -y --year <Y>           year season starts [default: 2016]
-  -v --version            show the version
     """
 
 import httplib2
@@ -149,13 +149,11 @@ def main(opts):
     # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
 
     for e in datesRaw:             # fix spelling
-        if opts['--debug']:
-            if 'inlaw' in e['description']:
-                print '** spellcheck:', e
-            if 'Bob S' in e['summary']:
-                print '** spellcheck:', e
-        e['description'] = e['description'].replace('inlaw','in-law')    #  in-law, not inlaw
-        e['summary'] = e['summary'].replace('Bob S','BobS ')             #  BobS, not Bob S
+        for field, wrong, right in [('description','inlaw','in-law'),('summary','Bob S','BobS ')]:
+            if opts['--debug']:
+                if wrong in e[field]:
+                    print '** spellcheck:', e
+            e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
 
     if opts['--debug']:
         print '** datesRaw'
@@ -200,6 +198,13 @@ def main(opts):
                         print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
                 else:
                     print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
+
+    if opts['--member']:
+        print ''
+        print '%10s %20s %-20s'%('','','Guests Calendar')
+        for e in datesRaw:
+            if '+' in e['summary'] and opts['--member'] in e['summary'].split():
+                print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
 
     datesComb = [datesRaw[0]]  # colapse the raw calendar to show each night on one line
     for e in datesRaw[1:]:

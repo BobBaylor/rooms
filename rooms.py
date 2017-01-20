@@ -147,6 +147,8 @@ def main(opts):
                     e[k] = ''
             datesRaw += [e]
     # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
+    for e in datesRaw:             # add day of week
+        e['night'] = datetime.datetime.strptime(e['night'],'%Y-%m-%d').strftime('%a %m/%d')   # turn "2016-12-23" into "Fri 12/23"
 
     for e in datesRaw:             # fix spelling
         for field, wrong, right in [('description','inlaw','in-law'),('summary','Bob S','BobS ')]:
@@ -187,17 +189,20 @@ def main(opts):
         for e in datesRaw:
             print '%10s %-10s %-20s'%(e['night'],e['summary'],e['description'])+' '.join(['%10s'%e[r] for r in rooms])
 
-    bCoreGuestsFree = False
+    gPeak = ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',]
     if opts['--guests']:
         print ''
         print '%10s %20s %-20s'%('','','Guests Calendar')
+        gFeeTot, gTot = 0, 0
         for e in datesRaw:
-            if '+' in e['summary']:
-                if bCoreGuestsFree:
-                    if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
-                        print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
-                else:
-                    print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
+            if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
+                gFee = 40 if any([x in e['night'] for x in gPeak]) else 35
+                gFee *= int(e['summary'].split('+')[1])
+                gFeeTot += gFee
+                gTot += 1
+                # if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
+                print '%10s %4d %-20s %-20s'%(e['night'],gFee,e['summary'],e['description'])
+        print 'Total %d guests and $%d in fees'%(gTot,gFeeTot)
 
     if opts['--member']:
         print ''

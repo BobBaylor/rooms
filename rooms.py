@@ -1,7 +1,8 @@
+#! /usr/bin/env python
 #
 # quickstart
 # from  https://developers.google.com/google-apps/calendar/quickstart/python
-# I had to use easytools to install instead of pip
+# I had to use easy_tools to install instead of pip
 
 
 # from __future__ import print_function  # sorry, I don't really like the future

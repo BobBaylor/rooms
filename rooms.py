@@ -172,12 +172,12 @@ def count_members_in_rooms(datesRaw,opts):
 
 
 
-def show_guest_fees(datesRaw):
+def show_guest_fees(datesRaw,m=''):
     """ Calculate guest fees based on the cabin rules (Fri and Sat nights are "Peak" rates)
     """
     gPeak = ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',]
     print ''
-    print '%10s %20s %-20s'%('','Guests Calendar','')
+    print '%10s %20s %-20s'%('','Guests Calendar',m)
     gFeeTot, gTot = 0, 0
     for e in datesRaw:
         if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
@@ -205,7 +205,7 @@ def show_whos_up(datesRaw,opts):
 
     for m in sorted(membs.items(),key=lambda(k,v): v[0][0]):
         # print m
-        print '%15s %s'%(m[0],', '.join([x[1].split()[1] for x in m[1]]))
+        print '%15s %s %s'%(m[0],m[1][0][1].split()[0],', '.join([x[1].split()[1] for x in m[1]]))
 
 
 def show_missing_rooms(datesRaw,opts):
@@ -298,11 +298,8 @@ def main(opts):
         show_guest_fees(datesToNow)
 
     if opts['--member']:
-        print ''
-        print '%10s %20s %-20s'%('','','Member Guest Calendar')
-        for e in datesRaw:
-            if '+' in e['summary'] and opts['--member'] in e['summary'].split():
-                print '%10s %-20s %-20s'%(e['nightShort'],e['summary'],e['description'])
+        datesToNowSingle = [x for x in datesToNow if opts['--member'] in x['summary'].split()]
+        show_guest_fees(datesToNowSingle,opts['--member'])        
 
     if opts['--nights']:
         show_nights(datesToNow,opts)

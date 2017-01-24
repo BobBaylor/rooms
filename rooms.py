@@ -54,6 +54,8 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
 
+rooms =  ('in-law', 'master', 'middle',  'bunk',  'loft')
+
 
 def get_credentials(opts):
     """Gets valid user credentials from storage.
@@ -91,6 +93,139 @@ def get_events(cred, **kwargs):
     return ev
 
 
+def get_season(credentials,opts):
+    day0 = datetime.datetime(int(opts['--year']),12,1).isoformat()+'Z'
+    dayLast = datetime.datetime(1+int(opts['--year']),5,1).isoformat()+'Z'
+    events = get_events(credentials,timeMin=day0,timeMax=dayLast, singleEvents=True, orderBy='startTime',calendarId="primary")
+    datesRaw = []
+    for event in events:
+        e = {}
+        e['night'] = event['start'].get('dateTime', event['start'].get('date'))[:10]  # {'night':'2016-12-15'}
+        # summary is the member name, description has room assignment
+        for k in ('summary','description','colorId'):
+            try:
+                e[k] = event[k]
+            except KeyError:
+                e[k] = ''
+        datesRaw += [e]
+    # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
+    for e in datesRaw:             # add day of week
+        e['date'] = datetime.datetime.strptime(e['night'],'%Y-%m-%d')
+        e['nightShort'] = e['date'].strftime('%a %m/%d')   # turn "2016-12-23" into "Fri 12/23"
+    return datesRaw
+
+
+def fix_spelling(datesRaw, opts):
+    for e in datesRaw:             # fix spelling
+        for field, wrong, right in [('description','inlaw','in-law'),('summary','Bob S','BobS ')]:
+            if opts['--debug']:
+                if wrong in e[field]:
+                    print '** spellcheck:', e
+            e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
+    return datesRaw
+
+
+def select_dates(datesRaw, opts, day0=None, day1=None):
+    dateSeasonStart = datetime.datetime(int(opts['--year']),12,1)
+    dateSeasonEnd = datetime.datetime(1+int(opts['--year']),5,1)
+    dateFirst = dateSeasonStart if day0 == None else datetime.datetime.utcnow() + datetime.timedelta(days=day0)
+    dateLast =  dateSeasonEnd   if day1 == None else datetime.datetime.utcnow() + datetime.timedelta(days=day1)
+    # print 'select',dateFirst.strftime('%a %m/%d'), dateLast.strftime('%a %m/%d')
+    return [e for e in datesRaw if bool(dateFirst <= e['date'] <= dateLast) ]
+
+
+def show_raw(datesRaw,bdict=False):
+    if bdict:
+        print '** datesRaw'
+        print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description')]) for e in datesRaw]) +'}'
+    else:
+        print ''
+        print '%10s %10s %-20s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
+        for e in datesRaw:
+            print '%10s %-10s %-20s'%(e['nightShort'],e['summary'],e['description'])+' '.join(['%10s'%e[r] for r in rooms])
+
+
+def put_members_in_rooms(datesRaw,opts):
+    for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+        for r in rooms:
+            if r in e['description'].lower():
+                e[r] = gevent_to_member_name(e)   # just the first name
+            else:
+                e[r] = ''
+
+
+def count_members_in_rooms(datesRaw,opts):
+    memberCnts = {}
+    for e in datesRaw:
+        memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms+('total',)}              # init the memberCnts with the first name {rooms}
+    for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+        memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1
+        for r in rooms:
+            if r in e['description'].lower():
+                memberCnts[ e[r] ][r] = memberCnts[ e[r] ][r]+1
+    return memberCnts
+
+
+
+def show_guest_fees(datesRaw):
+    gPeak = ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',]
+    print ''
+    print '%10s %20s %-20s'%('','Guests Calendar','')
+    gFeeTot, gTot = 0, 0
+    for e in datesRaw:
+        if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
+            gFee = 40 if any([x in e['nightShort'] for x in gPeak]) else 35
+            gFee *= int(e['summary'].split('+')[1])
+            gFeeTot += gFee
+            gTot += 1
+            # if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
+            print '%10s %4d %-20s %-20s'%(e['nightShort'],gFee,e['summary'],e['description'])
+    print 'Total %d guests and $%d in fees'%(gTot,gFeeTot)
+
+
+def show_whos_up(datesRaw,opts):
+    print "Here's who I've heard from:"
+    datesRaw = select_dates(datesRaw, opts, 0, 7)
+    membs = {}
+    for e in datesRaw:
+        m = e['summary']
+        try:
+            membs[m] += [(e['date'],e['nightShort']),]
+        except KeyError:
+            membs[m] = [(e['date'],e['nightShort']),]
+
+    for m in sorted(membs.items(),key=lambda(k,v): v[0][0]):
+        # print m
+        print '%15s %s'%(m[0],', '.join([x[1].split()[1] for x in m[1]]))
+
+
+def show_missing_rooms(datesRaw,opts):
+    datesRaw = select_dates(datesRaw, opts, None, 0)
+    outS = ''
+    for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+        if not (opts['--future'] or opts['--whosup']):        # catch members in cabin but not assigned to any room
+            outS = outS + '** On %s where did %s sleep?'%(e['nightShort'],e['summary'])
+    if outS:
+        print '%10s %20s %-20s'%('',"Missing rooms",'')
+        print outS
+
+
+def show_nights(datesToNow,opts):
+    datesComb = [datesToNow[0]]  # colapse the raw calendar to show each night on one line
+    for e in datesToNow[1:]:
+        if datesComb[-1]['nightShort'] not in e['nightShort']:        # new date
+            datesComb += [e]
+        else:
+            for r in rooms:
+                sep = ',' if e[r] and datesComb[-1][r] else ''
+                datesComb[-1][r] = datesComb[-1][r]+sep+e[r]
+    # datesComb[] is {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'Bob', 'midle':'Mark', ...}
+    print '\n%10s '%('Nights')+' '.join(['%16s'%r for r in rooms])
+    for e in datesComb:
+        print '%10s '%(e['nightShort'])+' '.join(['%16s'%e[r] for r in rooms])
+
+
+
 def gevent_to_member_name(e):
     mem = e['summary'].split()[0].replace(',','')
     return mem
@@ -102,6 +237,7 @@ def main(opts):
     who,                count,  count,  count, count, count
 
     """
+
     if opts['--offline']:
         datesRaw = [
             {'night':'2016-12-03', 'summary':'Logan', 'description':'master'},
@@ -128,105 +264,38 @@ def main(opts):
             ]
     else:
         credentials = get_credentials(opts)
-        day0 = datetime.datetime(int(opts['--year']),12,1).isoformat()+'Z'
-        dayLast = datetime.datetime.utcnow().isoformat() + 'Z'
-        if opts['--future']:
-            dayLast = None
-        if opts['--whosup']:
-            dayThis = datetime.datetime.utcnow() + datetime.timedelta(days=7)
-            dayLast = dayThis.isoformat() + 'Z'
-        events = get_events(credentials,timeMin=day0,timeMax=dayLast, singleEvents=True, orderBy='startTime',calendarId="primary")
-        datesRaw = []
-        for event in events:
-            e = {}
-            e['night'] = event['start'].get('dateTime', event['start'].get('date'))[:10]  # {'night':'2016-12-15'}
-            # summary is the member name, description has room assignment
-            for k in ('summary','description','colorId'):
-                try:
-                    e[k] = event[k]
-                except KeyError:
-                    e[k] = ''
-            datesRaw += [e]
-    # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
-    for e in datesRaw:             # add day of week
-        e['night'] = datetime.datetime.strptime(e['night'],'%Y-%m-%d').strftime('%a %m/%d')   # turn "2016-12-23" into "Fri 12/23"
+        datesRaw = get_season(credentials,opts)
 
-    for e in datesRaw:             # fix spelling
-        for field, wrong, right in [('description','inlaw','in-law'),('summary','Bob S','BobS ')]:
-            if opts['--debug']:
-                if wrong in e[field]:
-                    print '** spellcheck:', e
-            e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
+    datesRaw = fix_spelling(datesRaw, opts)
 
     if opts['--debug']:
-        print '** datesRaw'
-        print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('night','summary','description')]) for e in datesRaw]) +'}'
+        show_raw(datesRaw, True)
 
-    rooms =  ('in-law', 'master', 'middle',  'bunk',  'loft')
-    memberCnts = {}
-    for e in datesRaw:
-        memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms+('total',)}              # init the memberCnts with the first name {rooms}
+    put_members_in_rooms(datesRaw,opts)
 
-    for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
-        memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1
-        for r in rooms:
-            if r in e['description'].lower():
-                e[r] = gevent_to_member_name(e)   # just the first name
-                memberCnts[ e[r] ][r] = memberCnts[ e[r] ][r]+1
-            else:
-                e[r] = ''
-        # todo: limit this next thing to the next 7 days
-        if all([not bool(e[r]) for r in rooms]):
-            if not (opts['--future'] or opts['--whosup']):        # catch members in cabin but not assigned to any room
-                print '** On %s where did %s sleep?'%(e['night'],e['summary'])
-            if opts['--whosup']:            # show me the who's up
-                print '   %s %s'%(e['night'],e['summary'])
+    datesToNow = select_dates(datesRaw, opts, None, 0)
+    memberCnts = count_members_in_rooms(datesToNow,opts)
+
+    if opts['--whosup']:
+        show_whos_up(datesRaw,opts)
     # datesRaw[] is now a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'', 'midle':'', ...}
     # memberCnts{} = {'Bob':{'in-law':1, 'master':0, 'middle':0,  'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
 
     if opts['--raw']:
-        print ''
-        print '%10s %10s %-20s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
-        for e in datesRaw:
-            print '%10s %-10s %-20s'%(e['night'],e['summary'],e['description'])+' '.join(['%10s'%e[r] for r in rooms])
+        show_raw(datesRaw, False)
 
-    gPeak = ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',]
     if opts['--guests']:
-        print ''
-        print '%10s %20s %-20s'%('','','Guests Calendar')
-        gFeeTot, gTot = 0, 0
-        for e in datesRaw:
-            if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
-                gFee = 40 if any([x in e['night'] for x in gPeak]) else 35
-                gFee *= int(e['summary'].split('+')[1])
-                gFeeTot += gFee
-                gTot += 1
-                # if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
-                print '%10s %4d %-20s %-20s'%(e['night'],gFee,e['summary'],e['description'])
-        print 'Total %d guests and $%d in fees'%(gTot,gFeeTot)
+        show_guest_fees(datesToNow)
 
     if opts['--member']:
         print ''
-        print '%10s %20s %-20s'%('','','Guests Calendar')
+        print '%10s %20s %-20s'%('','','Member Guest Calendar')
         for e in datesRaw:
             if '+' in e['summary'] and opts['--member'] in e['summary'].split():
-                print '%10s %-20s %-20s'%(e['night'],e['summary'],e['description'])
-
-    datesComb = [datesRaw[0]]  # colapse the raw calendar to show each night on one line
-    for e in datesRaw[1:]:
-        if datesComb[-1]['night'] not in e['night']:        # new date
-            datesComb += [e]
-        else:
-            for r in rooms:
-                sep = ',' if e[r] and datesComb[-1][r] else ''
-                datesComb[-1][r] = datesComb[-1][r]+sep+e[r]
-    # datesComb[] is {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'Bob', 'midle':'Mark', ...}
+                print '%10s %-20s %-20s'%(e['nightShort'],e['summary'],e['description'])
 
     if opts['--nights']:
-        print '\n%10s '%('Nights')+' '.join(['%16s'%r for r in rooms])
-        for e in datesComb:
-            print '%10s '%(e['night'])+' '.join(['%16s'%e[r] for r in rooms])
-
+        show_nights(datesToNow,opts)
 
     print '\n%4s%10s'%('','Counts')+' '.join(['%8s'%r for r in rooms])   # show how many times each member has slept in each room
     for c in memberCnts:

@@ -126,6 +126,10 @@ def fix_spelling(datesRaw, opts):
 
 
 def select_dates(datesRaw, opts, day0=None, day1=None):
+    """ return a subset of the events from today+day0 to today+day1
+        None in day0 means begining of current ski season
+        None in day1 means end of current ski season
+    """
     dateSeasonStart = datetime.datetime(int(opts['--year']),12,1)
     dateSeasonEnd = datetime.datetime(1+int(opts['--year']),5,1)
     dateFirst = dateSeasonStart if day0 == None else datetime.datetime.utcnow() + datetime.timedelta(days=day0)
@@ -146,7 +150,8 @@ def show_raw(datesRaw,bdict=False):
 
 
 def put_members_in_rooms(datesRaw,opts):
-    for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+    # add ['middle']='Logan' or blank for all rooms
+    for e in datesRaw:
         for r in rooms:
             if r in e['description'].lower():
                 e[r] = gevent_to_member_name(e)   # just the first name
@@ -168,6 +173,8 @@ def count_members_in_rooms(datesRaw,opts):
 
 
 def show_guest_fees(datesRaw):
+    """ Calculate guest fees based on the cabin rules (Fri and Sat nights are "Peak" rates)
+    """
     gPeak = ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',]
     print ''
     print '%10s %20s %-20s'%('','Guests Calendar','')
@@ -184,6 +191,8 @@ def show_guest_fees(datesRaw):
 
 
 def show_whos_up(datesRaw,opts):
+    """ This output gets pasted into my periodic emails
+    """
     print "Here's who I've heard from:"
     datesRaw = select_dates(datesRaw, opts, 0, 7)
     membs = {}
@@ -203,7 +212,7 @@ def show_missing_rooms(datesRaw,opts):
     datesRaw = select_dates(datesRaw, opts, None, 0)
     outS = ''
     for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
-        if not (opts['--future'] or opts['--whosup']):        # catch members in cabin but not assigned to any room
+        if not e['description']:        # catch members in cabin but not assigned to any room
             outS = outS + '** On %s where did %s sleep?'%(e['nightShort'],e['summary'])
     if outS:
         print '%10s %20s %-20s'%('',"Missing rooms",'')
@@ -275,6 +284,7 @@ def main(opts):
 
     datesToNow = select_dates(datesRaw, opts, None, 0)
     memberCnts = count_members_in_rooms(datesToNow,opts)
+    show_missing_rooms(datesToNow,opts)
 
     if opts['--whosup']:
         show_whos_up(datesRaw,opts)

@@ -211,11 +211,15 @@ def show_whos_up(datesRaw,opts):
         try:
             membs[m] += [(e['date'],e['nightShort']),]
         except KeyError:
-            membs[m] = [(e['date'],e['nightShort']),]
+            membs[m] = [e['description'],(e['date'],e['nightShort']),]
 
-    for m in sorted(membs.items(),key=lambda(k,v): v[0][0]):  # sort by the begining night of stay
+    for m in sorted(membs.items(),key=lambda(k,v): v[1][0]):  # sort by the begining night of stay
         # print m
-        print '%15s %s %s'%(m[0],m[1][0][1].split()[0],', '.join([x[1].split()[1] for x in m[1]]))
+        # print '%15s %s %s %s'%(m[0],m[1][1][1].split()[0],', '.join([x[1].split()[1] for x in m[1]]),m[1][0])
+        print '%15s'%(m[0],),
+        print ' %s'%(m[1][1][1].split()[0],),
+        print ' %s'%(', '.join([x[1].split()[1] for x in m[1][1:]]),),
+        print ' %s'%(m[1][0],)
 
 
 def show_missing_rooms(datesRaw,opts):

@@ -227,13 +227,13 @@ def show_missing_rooms(datesRaw,opts):
         must be in a room. Otherwise, the count will be wrong and the priority system breaks down.
     """
     datesRaw = select_dates(datesRaw, opts, None, 0)
-    outS = ''
+    outS = []
     for e in datesRaw:
         if not e['description']:        # catch members in cabin but not assigned to any room
-            outS = outS + '** On %s where did %s sleep?'%(e['nightShort'],e['summary'])
+            outS += ['** On %s where did %s sleep?'%(e['nightShort'],e['summary'])]
     if outS:
         print '%10s %20s %-20s'%('',"Missing rooms",'')
-        print outS
+        print '\n'.join(outS)
 
 
 def show_nights(datesToNow,opts):

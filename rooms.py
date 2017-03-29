@@ -3,6 +3,8 @@
 based on this quickstart:
 from  https://developers.google.com/google-apps/calendar/quickstart/python
 I had to use easy_tools to install instead of pip
+    easy_install --upgrade google-api-python-client
+And don't forget to put client_secret.json in ~/.credentials
 """
 
 
@@ -33,7 +35,7 @@ import httplib2
 import os
 import sys
 
-from apiclient import discovery
+from googleapiclient import discovery
 from oauth2client import client
 from oauth2client import tools
 from oauth2client.file import Storage

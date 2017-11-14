@@ -28,7 +28,7 @@ lcUuseStr = """
   -r --raw                show the raw calendar events
   -v --version            show the version
   -w --whosup             show who's up in the next week
-  -y --year <Y>           year season starts [default: 2016]
+  -y --year <Y>           year season starts [default: 2017]
     """
 
 import httplib2
@@ -65,7 +65,8 @@ rooms =  ('in-law', 'master', 'middle',  'bunk',  'loft')    # assignable rooms 
 """
 gPeak = {
     '2016': ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',],
-    '2017': ['Fri','Sat']+['12/%2d'%x for x in range(17,32)]+['01/01',        '02/19',],
+    '2017': ['Fri','Sat']+['12/%2d'%x for x in range(17,32)]+['01/01',        '02/18',],
+    '2018': ['Fri','Sat']+['12/%2d'%x for x in range(16,32)]+['01/01',        '02/17',],
     }
 
 
@@ -294,27 +295,27 @@ def gevent_to_member_name(e):
 def main(opts):
     if opts['--offline']:
         datesRaw = [
-            {'night':'2016-12-03', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-03', 'summary':'Bob', 'description':'inlaw'},     # test inlaw->in-law sub
-            {'night':'2016-12-03', 'summary':'Mark', 'description':'bunk'},
-            {'night':'2016-12-03', 'summary':'Jon', 'description':'middle'},
-            {'night':'2016-12-04', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-04', 'summary':'Jon', 'description':'in-law'},
-            {'night':'2016-12-05', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-05', 'summary':'Jon', 'description':'in-law'},
-            {'night':'2016-12-06', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-06', 'summary':'James', 'description':'in-law'},
-            {'night':'2016-12-07', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-08', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-09', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-11', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-11', 'summary':'James', 'description':'in-law'},
-            {'night':'2016-12-12', 'summary':'Logan', 'description':'master'},
-            {'night':'2016-12-12', 'summary':'James', 'description':'in-law'},
-            {'night':'2016-12-13', 'summary':'Bob S +1', 'description':'master, middle'}, # test Bob S to BobS sub
-            {'night':'2016-12-13', 'summary':'James', 'description':'in-law'},
-            {'night':'2016-12-14', 'summary':'James', 'description':'in-law'},
-            {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
+            {'night':'2017-12-03', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-03', 'summary':'Bob', 'description':'inlaw'},     # test inlaw->in-law sub
+            {'night':'2017-12-03', 'summary':'Mark', 'description':'bunk'},
+            {'night':'2017-12-03', 'summary':'Jon', 'description':'middle'},
+            {'night':'2017-12-04', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-04', 'summary':'Jon', 'description':'in-law'},
+            {'night':'2017-12-05', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-05', 'summary':'Jon', 'description':'in-law'},
+            {'night':'2017-12-06', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-06', 'summary':'James', 'description':'in-law'},
+            {'night':'2017-12-07', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-08', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-09', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-11', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-11', 'summary':'James', 'description':'in-law'},
+            {'night':'2017-12-12', 'summary':'Peter', 'description':'master'},
+            {'night':'2017-12-12', 'summary':'James', 'description':'in-law'},
+            {'night':'2017-12-13', 'summary':'Bob S +1', 'description':'master, middle'}, # test Bob S to BobS sub
+            {'night':'2017-12-13', 'summary':'James', 'description':'in-law'},
+            {'night':'2017-12-14', 'summary':'James', 'description':'in-law'},
+            {'night':'2017-12-15', 'summary':'Peter', 'description':'master'}
             ]
     else:
         credentials = get_credentials(opts)
@@ -334,7 +335,7 @@ def main(opts):
 
     if opts['--whosup']:
         show_whos_up(datesRaw,opts)
-    # datesRaw[] is now a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'', 'midle':'', ...}
+    # datesRaw[] is now a list of  {'night':'2016-12-15', 'summary':'Peter', 'description':'master', 'master':'Peter', 'in-law':'', 'midle':'', ...}
     # memberCnts{} = {'Bob':{'in-law':1, 'master':0, 'middle':0,  'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
 
     if opts['--raw']:

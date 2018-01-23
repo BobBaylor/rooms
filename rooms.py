@@ -16,7 +16,6 @@ lcUuseStr = """
   rooms  [--counts] [--debug] [--guests] [--member=<M>] [--nights] [--offline] [--raw] [--whosup] [--year=<Y>]
   rooms  -h | --help
   rooms  -v | --version
-
  Options:
   -h --help               Show this screen.
   -c --counts             show how many times each member has used each room
@@ -71,16 +70,15 @@ rooms =  ('in-law', 'master', 'middle',  'bunk',  'loft')    # assignable rooms 
 gPeak = {
     '2016': ['Fri','Sat']+['12/%2d'%x for x in range(18,32)]+['01/01','01/02','02/19',],
     '2017': ['Fri','Sat']+['12/%2d'%x for x in range(17,32)]+['01/01',        '02/18',],
-    '2018': ['Fri','Sat']+['12/%2d'%x for x in range(16,32)]+['01/01',        '02/17',],
+    '2018': ['Fri','Sat']+['12/%2d'%x for x in range(16,32)]+['01/01',        '02/18',],
     }
-
+fee_guest_mid = 30
+fee_guest_peak = 35
 
 def get_credentials(opts):
     """Gets valid user credentials from storage.
-
     If nothing has been stored, or if the stored credentials are invalid,
     the OAuth2 flow is completed to obtain the new credentials.
-
     Returns:
         Credentials, the obtained credential.
     """
@@ -209,7 +207,7 @@ def show_guest_fees(datesRaw,opts):
     gFeeTot, gTot = 0, 0
     for e in datesRaw:
         if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
-            gFee = 40 if any([x in e['nightShort'] for x in gPeak[opts['--year']]]) else 35
+            gFee = fee_guest_peak if any([x in e['nightShort'] for x in gPeak[opts['--year']]]) else fee_guest_mid
             gFee *= int(e['summary'].split('+')[1])
             gFeeTot += gFee
             gTot += 1

@@ -31,15 +31,20 @@ lcUuseStr = """
   -y --year <Y>           year season starts [default: 2017]
     """
 
-import httplib2
-import os
-import sys
+try:
+    import httplib2
 
-from googleapiclient import discovery
-from oauth2client import client
-from oauth2client import tools
-from oauth2client.file import Storage
-import docopt
+    import os
+    import sys
+
+    from googleapiclient import discovery
+    from oauth2client import client
+    from oauth2client import tools
+    from oauth2client.file import Storage
+    import docopt
+except ImportError:
+    ierr_str = '**  Failed import! Type "workon rooms" and try again, Bob  **'
+    print '\n%s\n'%('*'*len(ierr_str)),ierr_str,'\n%s\n'%('*'*len(ierr_str))
 
 import datetime
 
@@ -119,6 +124,7 @@ def get_season(credentials,opts):
     for event in events:
         e = {}
         e['night'] = event['start'].get('dateTime', event['start'].get('date'))[:10]  # {'night':'2016-12-15'}
+        e['leave'] = event['end'].get('dateTime', event['end'].get('date'))[:10]  # {'night':'2016-12-15'}
         # summary is the member name, description has room assignment
         for k in ('summary','description','colorId'):
             try:
@@ -126,21 +132,31 @@ def get_season(credentials,opts):
             except KeyError:
                 e[k] = ''
         datesRaw += [e]
-    # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master'}
+    # datesRaw[] is a list of  {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'leave':'2016-12-16',}
     return datesRaw
 
 
 def more_dates(datesRaw):
+    # expand multi-night stays into individual nights
+    datesMulti = []
     for e in datesRaw:             # add day of week
         e['date'] = datetime.datetime.strptime(e['night'],'%Y-%m-%d')
+        nights = (datetime.datetime.strptime(e['leave'],'%Y-%m-%d').date() - e['date'].date()).days - 1
+        for i in range(nights):
+            f = e.copy()
+            f['date'] = datetime.datetime.strptime(e['night'],'%Y-%m-%d') + datetime.timedelta(days=i+1)
+            datesMulti += [f]
+    datesRaw += datesMulti
+    for e in datesRaw:             # add day of week
         e['nightShort'] = e['date'].strftime('%a %m/%d')   # turn "2016-12-23" into "Fri 12/23"
+    datesRaw = datesRaw.sort(key=lambda x:x['date'])
 
 
 def fix_spelling(datesRaw, opts):
     """  Common data entry errors: fix the dict and flag it for me to fix the google calendar
     """
     for e in datesRaw:
-        for field, wrong, right in [('description','inlaw','in-law'),('summary','Bob S','BobS ')]:
+        for field, wrong, right in [('description','inlaw','in-law'),('summary','Sarah','Sara')]:
             if opts['--debug']:
                 if wrong in e[field]:
                     print '** spellcheck:', e
@@ -166,7 +182,7 @@ def show_raw(datesRaw,bdict=False):
     """
     if bdict:
         print '** datesRaw'
-        print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description')]) for e in datesRaw]) +'}'
+        print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description','leave')]) for e in datesRaw]) +'}'
     else:
         print ''
         print '%10s %10s %-20s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
@@ -293,29 +309,22 @@ def gevent_to_member_name(e):
 
 
 def main(opts):
+    if opts['--debug']:
+        print repr(opts)
+
     if opts['--offline']:
         datesRaw = [
-            {'night':'2017-12-03', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-03', 'summary':'Bob', 'description':'inlaw'},     # test inlaw->in-law sub
-            {'night':'2017-12-03', 'summary':'Mark', 'description':'bunk'},
-            {'night':'2017-12-03', 'summary':'Jon', 'description':'middle'},
-            {'night':'2017-12-04', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-04', 'summary':'Jon', 'description':'in-law'},
-            {'night':'2017-12-05', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-05', 'summary':'Jon', 'description':'in-law'},
-            {'night':'2017-12-06', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-06', 'summary':'James', 'description':'in-law'},
-            {'night':'2017-12-07', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-08', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-09', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-11', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-11', 'summary':'James', 'description':'in-law'},
-            {'night':'2017-12-12', 'summary':'Peter', 'description':'master'},
-            {'night':'2017-12-12', 'summary':'James', 'description':'in-law'},
-            {'night':'2017-12-13', 'summary':'Bob S +1', 'description':'master, middle'}, # test Bob S to BobS sub
-            {'night':'2017-12-13', 'summary':'James', 'description':'in-law'},
-            {'night':'2017-12-14', 'summary':'James', 'description':'in-law'},
-            {'night':'2017-12-15', 'summary':'Peter', 'description':'master'}
+            {'night':'2017-12-03', 'leave':'2017-12-06','summary':'Peter', 'description':'master'},
+            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Bob', 'description':'inlaw'},     # test inlaw->in-law sub
+            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Mark', 'description':'bunk'},
+            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Jon', 'description':'middle'},
+            {'night':'2017-12-11', 'leave':'2017-12-12','summary':'James', 'description':'in-law'},
+            {'night':'2017-12-12', 'leave':'2017-12-15','summary':'Peter', 'description':'master'},
+            {'night':'2017-12-12', 'leave':'2017-12-12','summary':'James', 'description':'in-law'},
+            {'night':'2017-12-13', 'leave':'2017-12-13','summary':'Bob S +1', 'description':'master, middle'}, # test Bob S to BobS sub
+            {'night':'2017-12-13', 'leave':'2017-12-13','summary':'James', 'description':'in-law'},
+            {'night':'2017-12-14', 'leave':'2017-12-14','summary':'James', 'description':'in-law'},
+            {'night':'2017-12-28', 'leave':'2018-01-03','summary':'Peter', 'description':'master'}
             ]
     else:
         credentials = get_credentials(opts)

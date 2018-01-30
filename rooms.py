@@ -21,7 +21,7 @@ lcUuseStr = """
   -c --counts             show how many times each member has used each room
   -d --debug              show stuff
   -g --guests             show nights with guests
-  -m --member <M>         show nights with guests for a single member
+  -m --member <M>         show nights with guests for one member (or multiple comma sep - no spaces)
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
   -r --raw                show the raw calendar events
@@ -126,7 +126,7 @@ def get_season(credentials,opts):
         # summary is the member name, description has room assignment
         for k in ('summary','description','colorId'):
             try:
-                e[k] = event[k]
+                e[k] = event[k].strip()
             except KeyError:
                 e[k] = ''
         datesRaw += [e]
@@ -154,11 +154,13 @@ def fix_spelling(datesRaw, opts):
     """  Common data entry errors: fix the dict and flag it for me to fix the google calendar
     """
     for e in datesRaw:
-        for field, wrong, right in [('description','inlaw','in-law'),('summary','Sarah','Sara')]:
-            if opts['--debug']:
-                if wrong in e[field]:
-                    print '** spellcheck:', e
-            e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
+        for field, wrong, right in [('description','inlaw','in-law'),('summary','Sarah','Sara'),]:
+            if wrong in e[field]:
+                print '** spellcheck:', e
+                e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
+        if 'Glen ' in e['summary']: # special treatment for missing n in Glenn
+            print '** spellcheck:', e
+            e['summary'] = e['summary'].replace('Glen','Glenn')    #  two n in Glenn
     return datesRaw
 
 
@@ -183,9 +185,9 @@ def show_raw(datesRaw,bdict=False):
         print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description','leave')]) for e in datesRaw]) +'}'
     else:
         print ''
-        print '%10s %10s %-20s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
+        print '%10s %20s %-30s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
         for e in datesRaw:
-            print '%10s %-10s %-20s'%(e['nightShort'],e['summary'],e['description'])+' '.join(['%10s'%e[r] for r in rooms])
+            print '%10s %-20s %-30s'%(e['nightShort'],e['summary'],e['description'].strip())+' '.join(['%10s'%e[r] for r in rooms])
 
 
 def put_members_in_rooms(datesRaw,opts):
@@ -203,17 +205,19 @@ def show_guest_fees(datesRaw,opts):
         note: Special rule for Jon and Dina's daughter Sam who doesn't pay guest fee but does take a room.
     """
     m = '' if not opts['--member'] else opts['--member']
-    print '%10s %20s %-20s'%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar',m)
+    # print '\n%10s %20s %-20s'%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar',m)
+    print '\n%10s %20s '%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar')
     gFeeTot, gTot = 0, 0
     for e in datesRaw:
         if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
             gFee = fee_guest_peak if any([x in e['nightShort'] for x in gPeak[opts['--year']]]) else fee_guest_mid
-            gFee *= int(e['summary'].split('+')[1])
+            gCount = int(e['summary'].split('+')[1])
+            gFee *= gCount
             gFeeTot += gFee
-            gTot += 1
+            gTot += gCount
             # if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
             print '%10s %4d %-20s %-20s'%(e['nightShort'],gFee,e['summary'],e['description'])
-    print 'Total %d guests and $%d in fees'%(gTot,gFeeTot)
+    print 'Total %d guest-nights and $%d in fees'%(gTot,gFeeTot)
 
 
 def show_whos_up(datesRaw,opts):
@@ -280,6 +284,7 @@ def count_members_in_rooms(datesRaw,opts):
     for e in datesRaw:
         memberCnts[ gevent_to_member_name(e) ] = {t:0 for t in rooms+('total',)}              # init the memberCnts with the first name {rooms}
     for e in datesRaw:                                                       # add ['middle']='Logan' or blank for all rooms
+        # print '*****',gevent_to_member_name(e), '+++', e['summary'], '====', e['description'], '*****'
         memberCnts[gevent_to_member_name(e)]['total'] = memberCnts[gevent_to_member_name(e)]['total']+1
         for r in rooms:
             if r in e['description'].lower():
@@ -352,8 +357,9 @@ def main(opts):
         show_guest_fees(datesToNow,opts)
 
     if opts['--member']:
-        datesToNowSingle = [x for x in datesToNow if opts['--member'] in x['summary'].split()]
-        show_guest_fees(datesToNowSingle,opts)
+        for one_member in opts['--member'].split(','):
+            datesToNowSingle = [x for x in datesToNow if one_member in x['summary'].split()]
+            show_guest_fees(datesToNowSingle,opts)
 
     if opts['--nights']:
         show_nights(datesToNow,opts)

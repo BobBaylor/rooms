@@ -235,12 +235,12 @@ def show_whos_up(datesRaw,opts):
             membs[m] = [e['description'],(e['date'],e['nightShort']),]
 
     for m in sorted(membs.items(),key=lambda(k,v): v[1][0]):  # sort by the begining night of stay
-        # print m
+        # print m  # (u'Peter +1', [u'middle', (datetime.datetime(2018, 3, 2, 0, 0), 'Fri 03/02'), (datetime.datetime(2018, 3, 3, 0, 0), 'Sat 03/03')])
         # print '%15s %s %s %s'%(m[0],m[1][1][1].split()[0],', '.join([x[1].split()[1] for x in m[1]]),m[1][0])
-        print '%15s'%(m[0],),
-        print ' %s'%(m[1][1][1].split()[0],),
-        print ' %s'%(', '.join([x[1].split()[1] for x in m[1][1:]]),),
-        print ' %s'%(m[1][0],)
+        print '%15s'%(m[0],),                                           # Peter +1
+        print ' %s'%(m[1][1][1].split()[0],),                           # Fri    (the first day)
+        print ' %s'%(', '.join([x[1].split()[1] for x in m[1][1:]]),),  # 03/02, 03/03
+        print ' %s'%(m[1][0],)                                          # middle  (the room)
 
 
 def show_missing_rooms(datesRaw,opts):

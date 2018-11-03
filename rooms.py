@@ -27,7 +27,7 @@ lcUuseStr = """
   -r --raw                show the raw calendar events
   -v --version            show the version
   -w --whosup             show who's up in the next week
-  -y --year <Y>           year season starts [default: 2017]
+  -y --year <Y>           year season starts [default: 2018]
     """
 
 try:

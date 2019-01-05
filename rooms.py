@@ -13,7 +13,7 @@ And don't forget to put client_secret.json in ~/.credentials
 lcUuseStr = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--counts] [--debug] [--guests] [--member=<M>] [--nights] [--offline] [--raw] [--whosup] [--year=<Y>]
+  rooms  [--counts] [--debug] [--guests] [--member=<M>] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
   rooms  -h | --help
   rooms  -v | --version
  Options:
@@ -25,6 +25,7 @@ lcUuseStr = """
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
   -r --raw                show the raw calendar events
+  -s --shift <S>          move 'today' by integer number of days
   -v --version            show the version
   -w --whosup             show who's up in the next week
   -y --year <Y>           year season starts [default: 2018]
@@ -169,10 +170,13 @@ def select_dates(datesRaw, opts, day0=None, day1=None):
         None in day0 means begining of current ski season
         None in day1 means end of current ski season
     """
+    dt_today = datetime.datetime.utcnow() 
+    if opts['--shift']: 
+        dt_today += datetime.timedelta(days=int(opts['--shift']))
     dateSeasonStart = datetime.datetime(int(opts['--year']),12,1)  # season starts Dec 1
     dateSeasonEnd = datetime.datetime(1+int(opts['--year']),5,1)   # season ends May 1
-    dateFirst = dateSeasonStart if day0 == None else datetime.datetime.utcnow() + datetime.timedelta(days=day0)
-    dateLast =  dateSeasonEnd   if day1 == None else datetime.datetime.utcnow() + datetime.timedelta(days=day1)
+    dateFirst = dateSeasonStart if day0 == None else dt_today + datetime.timedelta(days=day0)
+    dateLast =  dateSeasonEnd   if day1 == None else dt_today + datetime.timedelta(days=day1)
     # print 'select',dateFirst.strftime('%a %m/%d'), dateLast.strftime('%a %m/%d')
     return [e for e in datesRaw if bool(dateFirst <= e['date'] <= dateLast) ]
 
@@ -222,25 +226,34 @@ def show_guest_fees(datesRaw,opts):
 
 def show_whos_up(datesRaw,opts):
     """ This output gets pasted into my periodic emails
-        who day date, date, date
+        who room: day date, date, date [, room: date, date]
     """
     print "Here's who I've heard from:"
     datesRaw = select_dates(datesRaw, opts, -2, 7)
+    
     membs = {}
+    p_ord = 0
     for e in datesRaw:
         m = e['summary']
         try:
-            membs[m] += [(e['date'],e['nightShort']),]
+            membs[m] += [(e['description'],e['nightShort']),]
         except KeyError:
-            membs[m] = [e['description'],(e['date'],e['nightShort']),]
+            membs[m] = [p_ord, m, (e['description'],e['nightShort']),]
+            p_ord += 1
 
-    for m in sorted(membs.items(),key=lambda(k,v): v[1][0]):  # sort by the begining night of stay
-        # print m  # (u'Peter +1', [u'middle', (datetime.datetime(2018, 3, 2, 0, 0), 'Fri 03/02'), (datetime.datetime(2018, 3, 3, 0, 0), 'Sat 03/03')])
-        # print '%15s %s %s %s'%(m[0],m[1][1][1].split()[0],', '.join([x[1].split()[1] for x in m[1]]),m[1][0])
-        print '%15s'%(m[0],),                                           # Peter +1
-        print ' %s'%(m[1][1][1].split()[0],),                           # Fri    (the first day)
-        print ' %s'%(', '.join([x[1].split()[1] for x in m[1][1:]]),),  # 03/02, 03/03
-        print ' %s'%(m[1][0],)                                          # middle  (the room)
+    # membs['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
+    for m in sorted(membs.items(),key=lambda(k,v): v[0]):  # sort by the begining night of stay
+        # m = ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
+        x = m[1][2:]    # just the list of tuples [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
+        r = x[0][0]     # save the room so we only print it when it changes
+        print '%15s %7s: %s,'%(m[0],x[0][0],x[0][1]),
+        for y in x[1:]:
+            if y[0] == r:
+                print y[1].split()[1]+',',
+            else:
+                print '%7s: %s,'%(y[0],y[1].split()[1]),
+                r = y[0] # save the room again
+        print ''
 
 
 def show_missing_rooms(datesRaw,opts):

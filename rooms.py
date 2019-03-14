@@ -36,6 +36,7 @@ try:
 
     import os
     import sys
+    import collections
 
     from googleapiclient import discovery
     from oauth2client import client
@@ -114,18 +115,21 @@ def get_events(cred, **kwargs):
 
 
 def get_season(credentials,opts):
-    """  Grab the entire calendar for the season
+    """  Grab the entire calendar for the season from Dec 1 to May 1
+        ctor the dicts with night, leave, summary, description keys.
+        nightShort is added later by moreDates()
     """
     day0 = datetime.datetime(int(opts['--year']),12,1).isoformat()+'Z'
     dayLast = datetime.datetime(1+int(opts['--year']),5,1).isoformat()+'Z'
     events = get_events(credentials,timeMin=day0,timeMax=dayLast, singleEvents=True, orderBy='startTime',calendarId="primary")
     datesRaw = []
     for event in events:
+        # e = collections.OrderedDict()
         e = {}
         e['night'] = event['start'].get('dateTime', event['start'].get('date'))[:10]  # {'night':'2016-12-15'}
         e['leave'] = event['end'].get('dateTime', event['end'].get('date'))[:10]  # {'night':'2016-12-15'}
         # summary is the member name, description has room assignment
-        for k in ('summary','description','colorId'):
+        for k in ('summary','description',):
             try:
                 e[k] = event[k].strip()
             except KeyError:
@@ -181,7 +185,7 @@ def select_dates(datesRaw, opts, day0=None, day1=None):
     return [e for e in datesRaw if bool(dateFirst <= e['date'] <= dateLast) ]
 
 
-def show_raw(datesRaw,bdict=False):
+def show_raw(datesRaw, bdict=False): # bdict=False is formated for humans. True is formatted to copy into code
     """  Debugging aid
     """
     if bdict:
@@ -330,21 +334,47 @@ def main(opts):
 
     if opts['--offline']:
         datesRaw = [
-            {'night':'2017-12-03', 'leave':'2017-12-06','summary':'Peter', 'description':'master'},
-            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Bob', 'description':'inlaw'},     # test inlaw->in-law sub
-            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Mark', 'description':'bunk'},
-            {'night':'2017-12-03', 'leave':'2017-12-04','summary':'Jon', 'description':'middle'},
-            {'night':'2017-12-11', 'leave':'2017-12-12','summary':'James', 'description':'in-law'},
-            {'night':'2017-12-12', 'leave':'2017-12-15','summary':'Peter', 'description':'master'},
-            {'night':'2017-12-12', 'leave':'2017-12-12','summary':'James', 'description':'in-law'},
-            {'night':'2017-12-13', 'leave':'2017-12-13','summary':'Bob S +1', 'description':'master, middle'}, # test Bob S to BobS sub
-            {'night':'2017-12-13', 'leave':'2017-12-13','summary':'James', 'description':'in-law'},
-            {'night':'2017-12-14', 'leave':'2017-12-14','summary':'James', 'description':'in-law'},
-            {'night':'2017-12-28', 'leave':'2018-01-03','summary':'Peter', 'description':'master'}
+            {'leave': u'2018-12-02', 'summary': u'Bob', 'description': u'master', 'night': u'2018-12-01'},
+            {'leave': u'2018-12-02', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-01'},
+            {'leave': u'2018-12-02', 'summary': u'Peter', 'description': u'middle', 'night': u'2018-12-01'},
+            {'leave': u'2018-12-06', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-02'},
+            {'leave': u'2018-12-03', 'summary': u'Peter', 'description': u'middle', 'night': u'2018-12-02'},
+            {'leave': u'2018-12-09', 'summary': u'Bob', 'description': u'master', 'night': u'2018-12-08'},
+            {'leave': u'2018-12-14', 'summary': u'Jon', 'description': u'loft', 'night': u'2018-12-10'},
+            {'leave': u'2018-12-24', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-14'},
+            {'leave': u'2018-12-23', 'summary': u'Dina', 'description': u'master', 'night': u'2018-12-20'},
+            {'leave': u'2018-12-30', 'summary': u'Jon, Sam, Z', 'description': u'bunk', 'night': u'2018-12-20'},
+            {'leave': u'2018-12-26', 'summary': u'Bob +1', 'description': u'middle', 'night': u'2018-12-22'},
+            {'leave': u'2018-12-28', 'summary': u'Erin +1', 'description': u'master', 'night': u'2018-12-23'},
+            {'leave': u'2018-12-26', 'summary': u'Dina', 'description': u'in-law', 'night': u'2018-12-23'},
+            {'leave': u'2018-12-28', 'summary': u'Peter', 'description': u'in-law', 'night': u'2018-12-25'},
+            {'leave': u'2018-12-30', 'summary': u'Dina', 'description': u'middle', 'night': u'2018-12-26'},
+            {'leave': u'2019-01-12', 'summary': u'James, Jean', 'description': u'middle', 'night': u'2019-01-09'},
+            {'leave': u'2019-01-13', 'summary': u'Bob +1', 'description': u'master', 'night': u'2019-01-12'},
+            {'leave': u'2019-01-13', 'summary': u'James, Jean +2', 'description': u'middle, bunk', 'night': u'2019-01-12'},
+            {'leave': u'2019-01-17', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-01-13'},
+            {'leave': u'2019-01-16', 'summary': u'Jean, James +1', 'description': u'middle, bunk', 'night': u'2019-01-13'},
+            {'leave': u'2019-01-18', 'summary': u'Peter', 'description': u'master', 'night': u'2019-01-15'},
+            {'leave': u'2019-01-21', 'summary': u'Jon +1 +Z', 'description': u'bunk', 'night': u'2019-01-18'},
+            {'leave': u'2019-01-21', 'summary': u'Dina', 'description': u'in-law', 'night': u'2019-01-18'},
+            {'leave': u'2019-01-22', 'summary': u'Glenn', 'description': u'master', 'night': u'2019-01-18'},
+            {'leave': u'2019-01-20', 'summary': u'Erin', 'description': u'loft', 'night': u'2019-01-18'},
+            {'leave': u'2019-01-20', 'summary': u'Bob +1', 'description': u'middle', 'night': u'2019-01-19'},
+            {'leave': u'2019-01-25', 'summary': u'James', 'description': u'in-law', 'night': u'2019-01-21'},
+            {'leave': u'2019-01-27', 'summary': u'Mark +1', 'description': u'middle, loft', 'night': u'2019-01-25'},
+            {'leave': u'2019-01-27', 'summary': u'Glenn', 'description': u'in-law', 'night': u'2019-01-25'},
+            {'leave': u'2019-02-01', 'summary': u'James', 'description': u'bunk', 'night': u'2019-01-25'},
+            {'leave': u'2019-01-27', 'summary': u'Bob', 'description': u'master', 'night': u'2019-01-26'},
+            {'leave': u'2019-02-01', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-01-27'},
+            {'leave': u'2019-02-06', 'summary': u'Mark', 'description': u'master', 'night': u'2019-02-04'},
+            {'leave': u'2019-02-08', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-02-05'},
+            {'leave': u'2019-02-10', 'summary': u'Mark', 'description': '', 'night': u'2019-02-08'},
+            {'leave': u'2019-02-10', 'summary': u'Bob', 'description': '', 'night': u'2019-02-09'},
             ]
     else:
         credentials = get_credentials(opts)
         datesRaw = get_season(credentials,opts)
+        # print ',\n'.join([repr(x) for x in datesRaw])
 
     more_dates(datesRaw)        # add 'date' and 'nightShort' fields to the events
     datesRaw = fix_spelling(datesRaw, opts)

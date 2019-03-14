@@ -170,8 +170,8 @@ def select_dates(datesRaw, opts, day0=None, day1=None):
         None in day0 means begining of current ski season
         None in day1 means end of current ski season
     """
-    dt_today = datetime.datetime.utcnow() 
-    if opts['--shift']: 
+    dt_today = datetime.datetime.utcnow()
+    if opts['--shift']:
         dt_today += datetime.timedelta(days=int(opts['--shift']))
     dateSeasonStart = datetime.datetime(int(opts['--year']),12,1)  # season starts Dec 1
     dateSeasonEnd = datetime.datetime(1+int(opts['--year']),5,1)   # season ends May 1
@@ -230,7 +230,7 @@ def show_whos_up(datesRaw,opts):
     """
     print "Here's who I've heard from:"
     datesRaw = select_dates(datesRaw, opts, -2, 7)
-    
+
     membs = {}
     p_ord = 0
     for e in datesRaw:
@@ -246,7 +246,7 @@ def show_whos_up(datesRaw,opts):
         # m = ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         x = m[1][2:]    # just the list of tuples [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
         r = x[0][0]     # save the room so we only print it when it changes
-        print '%15s %7s: %s,'%(m[0],x[0][0],x[0][1]),
+        print '%20s %7s: %s,'%(m[0],x[0][0],x[0][1]),
         for y in x[1:]:
             if y[0] == r:
                 print y[1].split()[1]+',',

@@ -45,7 +45,7 @@ try:
     import docopt
 except ImportError:
     ierr_str = '**  Failed import! Type "workon rooms" and try again, Bob  **'
-    print '\n%s\n'%('*'*len(ierr_str)),ierr_str,'\n%s\n'%('*'*len(ierr_str))
+    print('\n%s\n'%('*'*len(ierr_str)),ierr_str,'\n%s\n'%('*'*len(ierr_str)))
 
 import datetime
 
@@ -90,7 +90,7 @@ def get_credentials(opts):
         os.makedirs(credential_dir)
     credential_path = os.path.join(credential_dir,'calendar-python-quickstart.json')
     if opts['--debug']:
-        print '** using credentials at '+credential_path
+        print('** using credentials at '+credential_path)
     store = Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
@@ -100,7 +100,7 @@ def get_credentials(opts):
             credentials = tools.run_flow(flow, store, flags)
         else: # Needed only for compatibility with Python 2.6
             credentials = tools.run(flow, store)
-        print 'Storing credentials to ' + credential_path
+        print('Storing credentials to ' + credential_path)
     return credentials
 
 
@@ -161,10 +161,10 @@ def fix_spelling(datesRaw, opts):
     for e in datesRaw:
         for field, wrong, right in [('description','inlaw','in-law'),('summary','Sarah','Sara'),]:
             if wrong in e[field]:
-                print '** spellcheck:', e
+                print('** spellcheck:', e)
                 e[field] = e[field].replace(wrong,right)    #  in-law, not inlaw, e.g.
         if 'Glen ' in e['summary']: # special treatment for missing n in Glenn
-            print '** spellcheck:', e
+            print('** spellcheck:', e)
             e['summary'] = e['summary'].replace('Glen','Glenn')    #  two n in Glenn
     return datesRaw
 
@@ -189,13 +189,13 @@ def show_raw(datesRaw, bdict=False): # bdict=False is formated for humans. True 
     """  Debugging aid
     """
     if bdict:
-        print '** datesRaw'
-        print '{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description','leave')]) for e in datesRaw]) +'}'
+        print('** datesRaw')
+        print('{'+ '},\n{'.join([', '.join(["'%s':'%s'"%(n,e[n]) for n in ('nightShort','summary','description','leave')]) for e in datesRaw]) +'}')
     else:
-        print ''
-        print '%10s %20s %-30s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms])
+        print('')
+        print('%10s %20s %-30s'%('','','Raw Calendar')+' '.join(['%10s'%r for r in rooms]))
         for e in datesRaw:
-            print '%10s %-20s %-30s'%(e['nightShort'],e['summary'],e['description'].strip())+' '.join(['%10s'%e[r] for r in rooms])
+            print('%10s %-20s %-30s'%(e['nightShort'],e['summary'],e['description'].strip())+' '.join(['%10s'%e[r] for r in rooms]))
 
 
 def put_members_in_rooms(datesRaw,opts):
@@ -214,7 +214,7 @@ def show_guest_fees(datesRaw,opts):
     """
     m = '' if not opts['--member'] else opts['--member']
     # print '\n%10s %20s %-20s'%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar',m)
-    print '\n%10s %20s '%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar')
+    print('\n%10s %20s '%('%s-%2d'%(opts['--year'],int(opts['--year'])-1999),'Guests Calendar'))
     gFeeTot, gTot = 0, 0
     for e in datesRaw:
         if '+' in e['summary'] and 'Z+1' not in e['summary']: # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
@@ -224,15 +224,15 @@ def show_guest_fees(datesRaw,opts):
             gFeeTot += gFee
             gTot += gCount
             # if not any([c in e['summary'] for c in ('Erin','Jon','Bob ',)]):
-            print '%10s %4d %-20s %-20s'%(e['nightShort'],gFee,e['summary'],e['description'])
-    print 'Total %d guest-nights and $%d in fees'%(gTot,gFeeTot)
+            print('%10s %4d %-20s %-20s'%(e['nightShort'],gFee,e['summary'],e['description']))
+    print('Total %d guest-nights and $%d in fees'%(gTot,gFeeTot))
 
 
 def show_whos_up(datesRaw,opts):
     """ This output gets pasted into my periodic emails
         who room: day date, date, date [, room: date, date]
     """
-    print "Here's who I've heard from:"
+    print("Here's who I've heard from:")
     datesRaw = select_dates(datesRaw, opts, -2, 7)
 
     membs = {}
@@ -246,18 +246,18 @@ def show_whos_up(datesRaw,opts):
             p_ord += 1
 
     # membs['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
-    for m in sorted(membs.items(),key=lambda(k,v): v[0]):  # sort by the begining night of stay
+    for m in sorted(list(membs.items()),key=lambda k_v: k_v[1][0]):  # sort by the begining night of stay
         # m = ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         x = m[1][2:]    # just the list of tuples [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
         r = x[0][0]     # save the room so we only print it when it changes
-        print '%20s %7s: %s,'%(m[0],x[0][0],x[0][1]),
+        print('%20s %7s: %s,'%(m[0],x[0][0],x[0][1]), end=' ')
         for y in x[1:]:
             if y[0] == r:
-                print y[1].split()[1]+',',
+                print(y[1].split()[1]+',', end=' ')
             else:
-                print '%7s: %s,'%(y[0],y[1].split()[1]),
+                print('%7s: %s,'%(y[0],y[1].split()[1]), end=' ')
                 r = y[0] # save the room again
-        print ''
+        print('')
 
 
 def show_missing_rooms(datesRaw,opts):
@@ -270,8 +270,8 @@ def show_missing_rooms(datesRaw,opts):
         if not e['description']:        # catch members in cabin but not assigned to any room
             outS += ['** On %s where did %s sleep?'%(e['nightShort'],e['summary'])]
     if outS:
-        print '%10s %20s %-20s'%('',"Missing rooms",'')
-        print '\n'.join(outS)
+        print('%10s %20s %-20s'%('',"Missing rooms",''))
+        print('\n'.join(outS))
 
 
 def show_nights(datesToNow,opts):
@@ -288,9 +288,9 @@ def show_nights(datesToNow,opts):
                 sep = ',' if e[r] and datesComb[-1][r] else ''
                 datesComb[-1][r] = datesComb[-1][r]+sep+e[r]
     # datesComb[] is {'night':'2016-12-15', 'summary':'Logan', 'description':'master', 'master':'Logan', 'in-law':'Bob', 'midle':'Mark', ...}
-    print '\n%10s '%('Nights')+' '.join(['%16s'%r for r in rooms])
+    print('\n%10s '%('Nights')+' '.join(['%16s'%r for r in rooms]))
     for e in datesComb:
-        print '%10s '%(e['nightShort'])+' '.join(['%16s'%e[r] for r in rooms])
+        print('%10s '%(e['nightShort'])+' '.join(['%16s'%e[r] for r in rooms]))
 
 
 def count_members_in_rooms(datesRaw,opts):
@@ -314,9 +314,9 @@ def show_room_counts(memberCnts):
             date, who, where    inlaw, master, middle,  bunk,  loft
             total who,          count,  count,  count, count, count
     """
-    print '\n%4s%10s'%('','Counts')+' '.join(['%8s'%r for r in rooms])   # show how many times each member has slept in each room
+    print('\n%4s%10s'%('','Counts')+' '.join(['%8s'%r for r in rooms]))   # show how many times each member has slept in each room
     for c in memberCnts:
-        print '%4d%10s'%(memberCnts[c]['total'],c)+' '.join(['%8s'%('%d'%memberCnts[c][r] if memberCnts[c][r] else '' ) for r in rooms])
+        print('%4d%10s'%(memberCnts[c]['total'],c)+' '.join(['%8s'%('%d'%memberCnts[c][r] if memberCnts[c][r] else '' ) for r in rooms]))
 
 
 def gevent_to_member_name(e):
@@ -330,46 +330,46 @@ def gevent_to_member_name(e):
 
 def main(opts):
     if opts['--debug']:
-        print repr(opts)
+        print(repr(opts))
 
     if opts['--offline']:
         datesRaw = [
-            {'leave': u'2018-12-02', 'summary': u'Bob', 'description': u'master', 'night': u'2018-12-01'},
-            {'leave': u'2018-12-02', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-01'},
-            {'leave': u'2018-12-02', 'summary': u'Peter', 'description': u'middle', 'night': u'2018-12-01'},
-            {'leave': u'2018-12-06', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-02'},
-            {'leave': u'2018-12-03', 'summary': u'Peter', 'description': u'middle', 'night': u'2018-12-02'},
-            {'leave': u'2018-12-09', 'summary': u'Bob', 'description': u'master', 'night': u'2018-12-08'},
-            {'leave': u'2018-12-14', 'summary': u'Jon', 'description': u'loft', 'night': u'2018-12-10'},
-            {'leave': u'2018-12-24', 'summary': u'James, Jean', 'description': u'in-law', 'night': u'2018-12-14'},
-            {'leave': u'2018-12-23', 'summary': u'Dina', 'description': u'master', 'night': u'2018-12-20'},
-            {'leave': u'2018-12-30', 'summary': u'Jon, Sam, Z', 'description': u'bunk', 'night': u'2018-12-20'},
-            {'leave': u'2018-12-26', 'summary': u'Bob +1', 'description': u'middle', 'night': u'2018-12-22'},
-            {'leave': u'2018-12-28', 'summary': u'Erin +1', 'description': u'master', 'night': u'2018-12-23'},
-            {'leave': u'2018-12-26', 'summary': u'Dina', 'description': u'in-law', 'night': u'2018-12-23'},
-            {'leave': u'2018-12-28', 'summary': u'Peter', 'description': u'in-law', 'night': u'2018-12-25'},
-            {'leave': u'2018-12-30', 'summary': u'Dina', 'description': u'middle', 'night': u'2018-12-26'},
-            {'leave': u'2019-01-12', 'summary': u'James, Jean', 'description': u'middle', 'night': u'2019-01-09'},
-            {'leave': u'2019-01-13', 'summary': u'Bob +1', 'description': u'master', 'night': u'2019-01-12'},
-            {'leave': u'2019-01-13', 'summary': u'James, Jean +2', 'description': u'middle, bunk', 'night': u'2019-01-12'},
-            {'leave': u'2019-01-17', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-01-13'},
-            {'leave': u'2019-01-16', 'summary': u'Jean, James +1', 'description': u'middle, bunk', 'night': u'2019-01-13'},
-            {'leave': u'2019-01-18', 'summary': u'Peter', 'description': u'master', 'night': u'2019-01-15'},
-            {'leave': u'2019-01-21', 'summary': u'Jon +1 +Z', 'description': u'bunk', 'night': u'2019-01-18'},
-            {'leave': u'2019-01-21', 'summary': u'Dina', 'description': u'in-law', 'night': u'2019-01-18'},
-            {'leave': u'2019-01-22', 'summary': u'Glenn', 'description': u'master', 'night': u'2019-01-18'},
-            {'leave': u'2019-01-20', 'summary': u'Erin', 'description': u'loft', 'night': u'2019-01-18'},
-            {'leave': u'2019-01-20', 'summary': u'Bob +1', 'description': u'middle', 'night': u'2019-01-19'},
-            {'leave': u'2019-01-25', 'summary': u'James', 'description': u'in-law', 'night': u'2019-01-21'},
-            {'leave': u'2019-01-27', 'summary': u'Mark +1', 'description': u'middle, loft', 'night': u'2019-01-25'},
-            {'leave': u'2019-01-27', 'summary': u'Glenn', 'description': u'in-law', 'night': u'2019-01-25'},
-            {'leave': u'2019-02-01', 'summary': u'James', 'description': u'bunk', 'night': u'2019-01-25'},
-            {'leave': u'2019-01-27', 'summary': u'Bob', 'description': u'master', 'night': u'2019-01-26'},
-            {'leave': u'2019-02-01', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-01-27'},
-            {'leave': u'2019-02-06', 'summary': u'Mark', 'description': u'master', 'night': u'2019-02-04'},
-            {'leave': u'2019-02-08', 'summary': u'Jon', 'description': u'in-law', 'night': u'2019-02-05'},
-            {'leave': u'2019-02-10', 'summary': u'Mark', 'description': '', 'night': u'2019-02-08'},
-            {'leave': u'2019-02-10', 'summary': u'Bob', 'description': '', 'night': u'2019-02-09'},
+            {'leave': '2018-12-02', 'summary': 'Bob', 'description': 'master', 'night': '2018-12-01'},
+            {'leave': '2018-12-02', 'summary': 'James, Jean', 'description': 'in-law', 'night': '2018-12-01'},
+            {'leave': '2018-12-02', 'summary': 'Peter', 'description': 'middle', 'night': '2018-12-01'},
+            {'leave': '2018-12-06', 'summary': 'James, Jean', 'description': 'in-law', 'night': '2018-12-02'},
+            {'leave': '2018-12-03', 'summary': 'Peter', 'description': 'middle', 'night': '2018-12-02'},
+            {'leave': '2018-12-09', 'summary': 'Bob', 'description': 'master', 'night': '2018-12-08'},
+            {'leave': '2018-12-14', 'summary': 'Jon', 'description': 'loft', 'night': '2018-12-10'},
+            {'leave': '2018-12-24', 'summary': 'James, Jean', 'description': 'in-law', 'night': '2018-12-14'},
+            {'leave': '2018-12-23', 'summary': 'Dina', 'description': 'master', 'night': '2018-12-20'},
+            {'leave': '2018-12-30', 'summary': 'Jon, Sam, Z', 'description': 'bunk', 'night': '2018-12-20'},
+            {'leave': '2018-12-26', 'summary': 'Bob +1', 'description': 'middle', 'night': '2018-12-22'},
+            {'leave': '2018-12-28', 'summary': 'Erin +1', 'description': 'master', 'night': '2018-12-23'},
+            {'leave': '2018-12-26', 'summary': 'Dina', 'description': 'in-law', 'night': '2018-12-23'},
+            {'leave': '2018-12-28', 'summary': 'Peter', 'description': 'in-law', 'night': '2018-12-25'},
+            {'leave': '2018-12-30', 'summary': 'Dina', 'description': 'middle', 'night': '2018-12-26'},
+            {'leave': '2019-01-12', 'summary': 'James, Jean', 'description': 'middle', 'night': '2019-01-09'},
+            {'leave': '2019-01-13', 'summary': 'Bob +1', 'description': 'master', 'night': '2019-01-12'},
+            {'leave': '2019-01-13', 'summary': 'James, Jean +2', 'description': 'middle, bunk', 'night': '2019-01-12'},
+            {'leave': '2019-01-17', 'summary': 'Jon', 'description': 'in-law', 'night': '2019-01-13'},
+            {'leave': '2019-01-16', 'summary': 'Jean, James +1', 'description': 'middle, bunk', 'night': '2019-01-13'},
+            {'leave': '2019-01-18', 'summary': 'Peter', 'description': 'master', 'night': '2019-01-15'},
+            {'leave': '2019-01-21', 'summary': 'Jon +1 +Z', 'description': 'bunk', 'night': '2019-01-18'},
+            {'leave': '2019-01-21', 'summary': 'Dina', 'description': 'in-law', 'night': '2019-01-18'},
+            {'leave': '2019-01-22', 'summary': 'Glenn', 'description': 'master', 'night': '2019-01-18'},
+            {'leave': '2019-01-20', 'summary': 'Erin', 'description': 'loft', 'night': '2019-01-18'},
+            {'leave': '2019-01-20', 'summary': 'Bob +1', 'description': 'middle', 'night': '2019-01-19'},
+            {'leave': '2019-01-25', 'summary': 'James', 'description': 'in-law', 'night': '2019-01-21'},
+            {'leave': '2019-01-27', 'summary': 'Mark +1', 'description': 'middle, loft', 'night': '2019-01-25'},
+            {'leave': '2019-01-27', 'summary': 'Glenn', 'description': 'in-law', 'night': '2019-01-25'},
+            {'leave': '2019-02-01', 'summary': 'James', 'description': 'bunk', 'night': '2019-01-25'},
+            {'leave': '2019-01-27', 'summary': 'Bob', 'description': 'master', 'night': '2019-01-26'},
+            {'leave': '2019-02-01', 'summary': 'Jon', 'description': 'in-law', 'night': '2019-01-27'},
+            {'leave': '2019-02-06', 'summary': 'Mark', 'description': 'master', 'night': '2019-02-04'},
+            {'leave': '2019-02-08', 'summary': 'Jon', 'description': 'in-law', 'night': '2019-02-05'},
+            {'leave': '2019-02-10', 'summary': 'Mark', 'description': '', 'night': '2019-02-08'},
+            {'leave': '2019-02-10', 'summary': 'Bob', 'description': '', 'night': '2019-02-09'},
             ]
     else:
         credentials = get_credentials(opts)

@@ -1,0 +1,4 @@
+# ignore one other python file
+*.txt
+*.pyc
+rooms

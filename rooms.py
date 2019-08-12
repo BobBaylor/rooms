@@ -218,7 +218,8 @@ def show_raw(dates_raw, bdict=False):
 
 
 def put_members_in_rooms(dates_raw, opts):  #pylint: disable=W0613
-    """ add ['middle']='Logan' or blank for all rooms
+    """ add ['middle']='Logan', ['bunk']='' etc
+        so that all dates have all rooms as keys, w/ or w/o a member
     """
     for date in dates_raw:
         for room in ROOMS:
@@ -422,13 +423,13 @@ def main(opts):
         credentials = get_credentials(opts)
         events_raw = get_events_raw(credentials, opts)
         # print('events', ',\n'.join([repr(x) for x in events_raw]))
-        # add 'night' and 'leave' from 'start' and 'end'.
-        # add 'member' from 'member' and add 'where' from description
+        # translate 'start' and 'end' to 'night' and 'leave'
+        # translate 'summary' and 'description' to 'member' and 'where'
         dates_raw = events_to_raw_dates(events_raw, opts)
         # print ',\n'.join([repr(x) for x in dates_raw])
     #pylint: enable=C0301
 
-    # dates_raw is a list of dicts. The raw calendar dicts need a few more fields...
+    # dates_raw is a list of dicts. The dates_raw dicts need a few more fields...
     expand_multi_nights(dates_raw)  # add more date dicts to fill in between night and leaving
     add_day_of_week(dates_raw)      # add 'night_abrev' field to the date dicts
 
@@ -437,14 +438,15 @@ def main(opts):
     if opts['--debug']:
         show_raw(dates_raw, True)
 
-    put_members_in_rooms(dates_raw, opts)
+    put_members_in_rooms(dates_raw, opts)  # to each date, add entries for each room
 
+    # done filling the dicts... time to start printing!
     # dates_raw has whole season ----------------------
     dates_past = select_dates(dates_raw, opts, None, 0)
     # dates_raw[] is now a list of  {'night':'2016-12-15', 'member':'Peter',
     #           'where':'master', 'master':'Peter', 'in-law':'', 'midle':'', ...}
     # dates_past[] has only the dates to the present
-    show_missing_rooms(dates_past, opts)    # always show any members I failed to assign a room
+    show_missing_rooms(dates_past, opts)    # always show any members I failed to assign to a room
 
     if opts['--whosup']:
         show_whos_up(dates_raw, opts)
@@ -468,7 +470,6 @@ def main(opts):
         # member_counts{} = {'Bob':{'in-law':1, 'master':0, 'middle':0,
         #           'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
         show_room_counts(member_counts)
-
 
 
 if __name__ == '__main__':

@@ -370,8 +370,8 @@ def count_members_in_rooms(dates_raw, opts):    #pylint: disable=W0613
                     member_counts[event[room]][room] = member_counts[event[room]][room]+1
                 except KeyError as why:
                     msg = getattr(why, 'message', repr(why))
-                    print(f"FAILED room={room}\nevent={event}\n{msg}\n")
-                    print(f"member_counts={member_counts}\n")
+                    print("FAILED room=%s\nevent=%r\n%s\n"%(room,event,msg))
+                    print("member_counts=%r\n"%member_counts)
 
     return member_counts
 

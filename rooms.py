@@ -274,7 +274,7 @@ def show_guest_fees(dates_raw, opts):
         for one_beat in deadbeats:
             beat_total = sum([x[1] for x in deadbeats[one_beat]])
             beat_dates = [x[0].split()[1] for x in deadbeats[one_beat]]
-            print(f'{one_beat} owes ${beat_total} for %s'%", ".join(beat_dates))
+            print('%s owes $%s for %s'%(one_beat,beat_total,", ".join(beat_dates)))
 
 
 

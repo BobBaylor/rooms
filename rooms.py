@@ -239,20 +239,43 @@ def show_guest_fees(dates_raw, opts):
     # print '\n%10s %20s %-20s'
     #           %('%s-%2d'%(opts['--year'], int(opts['--year'])-1999),'Guests Calendar', m)
     print('\n%10s %20s '%('%s-%2d'%(opts['--year'], int(opts['--year'])-1999), 'Guests Calendar'))
-    guest_fee_accum, guest_nights_accum = 0, 0
+    guest_fee_owed, guest_fee_accum, guest_nights_accum = 0, 0, 0
+    deadbeats = {}
     for event in dates_raw:
         if '+' in event['member'] and 'Z+1' not in event['member']:
             # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
             guest_fee = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
                 for x in DAYS_PEAK[opts['--year']]]) else GUEST_FEE_MID
-            guest_count = int(event['member'].split('+')[1])
+            guest_count = int(event['member'].split('+')[1].split()[0])
             guest_fee *= guest_count
             guest_fee_accum += guest_fee
             guest_nights_accum += guest_count
+            if '$' in event['member']:
+                payment = 'paid'
+            else:
+                payment = 'OWES FOR'
+                guest_fee_owed += guest_fee
+                member_name = event['member'].split('+')[0]
+                if member_name in deadbeats:
+                    deadbeats[member_name] += [(event['night_abrev'], guest_fee)]
+                else:
+                    deadbeats[member_name] = [(event['night_abrev'], guest_fee)]
+                   
             # if not any([c in e['member'] for c in ('Erin','Jon','Bob ',)]):
-            print('%10s %4d %-20s %-20s'%
-                  (event['night_abrev'], guest_fee, event['member'], event['where']))
+            print('%-8s %10s %4d %-20s %-20s'%
+                  ( payment, 
+                    event['night_abrev'], 
+                    guest_fee, 
+                    event['member'], 
+                    event['where']))
     print('Total %d guest-nights and $%d in fees'%(guest_nights_accum, guest_fee_accum))
+    if deadbeats:
+        print('\nMembers owing guest fees:')
+        for one_beat in deadbeats:
+            beat_total = sum([x[1] for x in deadbeats[one_beat]])
+            beat_dates = [x[0].split()[1] for x in deadbeats[one_beat]]
+            print(f'{one_beat} owes ${beat_total} for {", ".join(beat_dates)}')
+
 
 
 def show_whos_up(dates_raw, opts):

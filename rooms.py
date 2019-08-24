@@ -246,12 +246,12 @@ def show_guest_fees(dates_raw, opts):
             # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
             guest_fee = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
                 for x in DAYS_PEAK[opts['--year']]]) else GUEST_FEE_MID
-            guest_count = int(event['member'].split('+')[1].split()[0])
+            guest_count = int(event['member'].split('+')[1][0])
             guest_fee *= guest_count
             guest_fee_accum += guest_fee
             guest_nights_accum += guest_count
             if '$' in event['member']:
-                payment = 'paid'
+                payment = ''
             else:
                 payment = 'OWES FOR'
                 guest_fee_owed += guest_fee
@@ -274,13 +274,16 @@ def show_guest_fees(dates_raw, opts):
         for one_beat in deadbeats:
             beat_total = sum([x[1] for x in deadbeats[one_beat]])
             beat_dates = [x[0].split()[1] for x in deadbeats[one_beat]]
-            print(f'{one_beat} owes ${beat_total} for {", ".join(beat_dates)}')
+            print(f'{one_beat} owes ${beat_total} for %s'%", ".join(beat_dates))
 
 
 
 def show_whos_up(dates_raw, opts):
     """ This output gets pasted into my periodic emails
         who room: day date, date, date [, room: date, date]
+        I generate a dict, keyed on the member, with values of a list:
+        [order#, member, (rooms,day),(rooms,day),...)]
+        I repeat the rooms for each day because it can change during a stay.
     """
     print("Here's who I've heard from:")
     dates_raw = select_dates(dates_raw, opts, -2, 7)
@@ -296,7 +299,7 @@ def show_whos_up(dates_raw, opts):
             p_ord += 1
 
     # members_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
-    # sort by the begining night of stay
+    # sort by the begining night of stay (the p_ord value, above)
     for member_ass in sorted(list(members_dict.items()), key=lambda k_v: k_v[1][0]):
         # member_ass =  ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         day_tup = member_ass[1][2:]    #  [('middle','Mon 12/24'), ('middle','Tue 12/25'),]

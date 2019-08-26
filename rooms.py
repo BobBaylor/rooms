@@ -250,7 +250,7 @@ def add_guest_fee(event, opts):
 def get_deadbeat_sponsors(dates_past):
     """ return dicts of members and their guest fee accounts
     """
-    # init the member dicts with the first {name: []}
+    # init the member dicts with  {name: []}
     deadbeats = {gevent_to_member_name(event): [] for event in dates_past}
     sponsors = {gevent_to_member_name(event): [] for event in dates_past}
 
@@ -263,13 +263,21 @@ def get_deadbeat_sponsors(dates_past):
 
 
 def show_guest_fees(members):
-    """ prints $sum member dates for each member
+    """ members is a dict created by get_deadbeat_sponsors():
+            member: [(night, fee), (night, fee), (night, fee), ...]
+        for each member, prints $sum, member, dates
+        or '  none' if there are no guest fees.
     """
+    out_lst = []
     for member in members:
         total = sum([x[1] for x in members[member]])
         dates = [x[0].split()[1] for x in members[member]]
         if total:
-            print('$%4d %10s: %s'%(total, member, ", ".join(dates)))
+            out_lst += ['$%4d %10s: %s'%(total, member, ", ".join(dates))]
+    if out_lst:
+        print('\n'.join(out_lst))
+    else:
+        print('  none')
 
 
 

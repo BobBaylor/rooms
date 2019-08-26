@@ -13,15 +13,13 @@ import os
 USE_STR = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--counts] [--debug] [--guests] [--member=<M>] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
+  rooms  [--counts] [--debug] [--guests] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
   rooms  -h | --help
   rooms  -v | --version
  Options:
   -h --help               Show this screen.
   -c --counts             show how many times each member has used each room
   -d --debug              show stuff
-  -g --guests             show nights with guests
-  -m --member <M>         show nights with guests for one member (or multiple comma sep - no spaces)
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
   -r --raw                show the raw calendar events
@@ -166,7 +164,7 @@ def add_day_of_week(dates_raw):
     dates_raw = dates_raw.sort(key=lambda x: x['date'])
 
 
-def fix_spelling(dates_raw, opts):      #pylint: disable=W0613
+def fix_spelling(dates_raw):
     """  Common data entry errors: fix the dict and flag it for me to fix the google calendar
     """
     for date in dates_raw:
@@ -198,26 +196,30 @@ def select_dates(dates_raw, opts, day0=None, day1=None):
     return [e for e in dates_raw if bool(date0 <= e['date'] <= date1)]
 
 
-def show_raw(dates_raw, bdict=False):
+def debug_print_raw(dates_raw):
     """  Debugging aid
-         bdict=False is formated for humans. True is formatted to copy into code
+         formatted to copy into code
     """
-    if bdict:
-        print('** dates_raw')
-        print('{'+ '},\n{'.join([', '.join(
-            ["'%s':'%s'"%(n, e[n]) for n in ('night_abrev', 'member', 'where', 'leave')]
-            ) for e in dates_raw]) +'}')
-    else:
-        print('')
-        print('%10s %20s %-30s'%('', '', 'Raw Calendar',)+' '.join(['%10s'%r for r in ROOMS]))
-        for date in dates_raw:
-            print('%10s %-20s %-30s'%(date['night_abrev'],
-                                      date['member'],
-                                      date['where'].strip()) +
-                  ' '.join(['%10s'%date[room] for room in ROOMS]))
+    print('** dates_raw')
+    print('{'+ '},\n{'.join([', '.join(
+        ["'%s':'%s'"%(n, e[n]) for n in ('night_abrev', 'member', 'where', 'leave')]
+        ) for e in dates_raw]) +'}')
 
 
-def put_members_in_rooms(dates_raw, opts):  #pylint: disable=W0613
+def show_raw(dates_raw):
+    """  Debugging aid
+         formatted for humans
+    """
+    print('')
+    print('%10s %20s %-20s'%('', '', 'Raw Calendar',)+' '.join(['%10s'%r for r in ROOMS]))
+    for date in dates_raw:
+        print('%10s %-20s %-20s'%(date['night_abrev'],
+                                  date['member'],
+                                  date['where'].strip()) +
+              ' '.join(['%10s'%date[room] for room in ROOMS]))
+
+
+def put_members_in_rooms(dates_raw):
     """ add ['middle']='Logan', ['bunk']='' etc
         so that all dates have all rooms as keys, w/ or w/o a member
     """
@@ -229,78 +231,75 @@ def put_members_in_rooms(dates_raw, opts):  #pylint: disable=W0613
                 date[room] = ''
 
 
-def show_guest_fees(dates_raw, opts):
-    """ Calculate guest fees based on the cabin rules
-        (Fri, Sat, and holiday  nights are "Peak" rates)
-        note: Special rule for Jon and Dina's daughter Sam who doesn't pay guest fee
-        but does take a room.
+def add_guest_fee(event, opts):
+    """ add 'guest_fee' key to a dates_raw event
+        0 means no guest, negative means fee is OWED, positive means paid
+        a '+ indicatees guests but not Z+1 (Sam).
+        Enter "Z +1" to indicate not Sam (chargable)
     """
-    # m = '' if not opts['--member'] else opts['--member']
-    # print '\n%10s %20s %-20s'
-    #           %('%s-%2d'%(opts['--year'], int(opts['--year'])-1999),'Guests Calendar', m)
-    print('\n%10s %20s '%('%s-%2d'%(opts['--year'], int(opts['--year'])-1999), 'Guests Calendar'))
-    guest_fee_owed, guest_fee_accum, guest_nights_accum = 0, 0, 0
-    deadbeats = {}
-    for event in dates_raw:
-        if '+' in event['member'] and 'Z+1' not in event['member']:
-            # guests but not Z+1 (Sam). Enter "Z +1" to indicate not Sam (chargable)
-            guest_fee = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
-                for x in DAYS_PEAK[opts['--year']]]) else GUEST_FEE_MID
-            guest_count = int(event['member'].split('+')[1][0])
-            guest_fee *= guest_count
-            guest_fee_accum += guest_fee
-            guest_nights_accum += guest_count
-            if '$' in event['member']:
-                payment = ''
-            else:
-                payment = 'OWES FOR'
-                guest_fee_owed += guest_fee
-                member_name = event['member'].split('+')[0]
-                if member_name in deadbeats:
-                    deadbeats[member_name] += [(event['night_abrev'], guest_fee)]
-                else:
-                    deadbeats[member_name] = [(event['night_abrev'], guest_fee)]
-                   
-            # if not any([c in e['member'] for c in ('Erin','Jon','Bob ',)]):
-            print('%-8s %10s %4d %-20s %-20s'%
-                  ( payment, 
-                    event['night_abrev'], 
-                    guest_fee, 
-                    event['member'], 
-                    event['where']))
-    print('Total %d guest-nights and $%d in fees'%(guest_nights_accum, guest_fee_accum))
-    if deadbeats:
-        print('\nMembers owing guest fees:')
-        for one_beat in deadbeats:
-            beat_total = sum([x[1] for x in deadbeats[one_beat]])
-            beat_dates = [x[0].split()[1] for x in deadbeats[one_beat]]
-            print('%s owes $%s for %s'%(one_beat,beat_total,", ".join(beat_dates)))
+    if '+' in event['member'] and 'Z+1' not in event['member']:
+        event['guest_fee'] = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
+            for x in DAYS_PEAK[opts['--year']]]) else GUEST_FEE_MID
+        if '$' not in event['member']:
+            event['guest_fee'] = -event['guest_fee']    # OWED
+    else:
+        event['guest_fee'] = 0
+    return event
 
 
-
-def show_whos_up(dates_raw, opts):
-    """ This output gets pasted into my periodic emails
-        who room: day date, date, date [, room: date, date]
-        I generate a dict, keyed on the member, with values of a list:
-        [order#, member, (rooms,day),(rooms,day),...)]
-        I repeat the rooms for each day because it can change during a stay.
+def get_deadbeat_sponsors(dates_past):
+    """ return dicts of members and their guest fee accounts
     """
-    print("Here's who I've heard from:")
-    dates_raw = select_dates(dates_raw, opts, -2, 7)
+    # init the member dicts with the first {name: []}
+    deadbeats = {gevent_to_member_name(event): [] for event in dates_past}
+    sponsors = {gevent_to_member_name(event): [] for event in dates_past}
 
+    for event in dates_past:
+        if event['guest_fee'] < 0:
+            deadbeats[gevent_to_member_name(event)] += [(event['night_abrev'], -event['guest_fee'])]
+        if event['guest_fee'] > 0:
+            sponsors[gevent_to_member_name(event)] += [(event['night_abrev'], event['guest_fee'])]
+    return deadbeats, sponsors
+
+
+def show_guest_fees(members):
+    """ prints $sum member dates for each member
+    """
+    for member in members:
+        total = sum([x[1] for x in members[member]])
+        dates = [x[0].split()[1] for x in members[member]]
+        if total:
+            print('$%4d %10s: %s'%(total, member, ", ".join(dates)))
+
+
+
+def get_whos_up(dates_selected):
+    """ return members_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
+        for use by show_whos_up()
+    """
     members_dict = {}
     p_ord = 0
-    for event in dates_raw:
+    for event in dates_selected:
         member = event['member']
         try:
             members_dict[member] += [(event['where'], event['night_abrev']),]
         except KeyError:
             members_dict[member] = [p_ord, member, (event['where'], event['night_abrev']),]
             p_ord += 1
+    return members_dict
 
-    # members_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
+
+def show_whos_up(whos_up_dict):
+    """ This output gets pasted into my periodic emails
+        who room: day date, date, date [, room: date, date]
+        I generate a dict, keyed on the member, with values of a list:
+        [order#, member, (rooms,day),(rooms,day),...)]
+        I repeat the rooms for each day because it can change during a stay.
+    """
+
+    # whos_up_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
     # sort by the begining night of stay (the p_ord value, above)
-    for member_ass in sorted(list(members_dict.items()), key=lambda k_v: k_v[1][0]):
+    for member_ass in sorted(list(whos_up_dict.items()), key=lambda k_v: k_v[1][0]):
         # member_ass =  ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         day_tup = member_ass[1][2:]    #  [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
         room = day_tup[0][0]     # save the room so we only print it when it changes
@@ -324,9 +323,9 @@ def show_missing_rooms(dates_raw, opts):
     for date in dates_raw:
         if not date['where']:        # catch members in cabin but not assigned to any room
             missing_rooms_str += \
-                ['** On %s, where did %s sleep?'%(date['night_abrev'], date['member'])]
+                ['** On %s, where did "%s" sleep?'%(date['night_abrev'], date['member'])]
     if missing_rooms_str:
-        print('%10s %20s %-20s'%('', "Missing rooms", ''))
+        print('** Missing rooms ! **')
         print('\n'.join(missing_rooms_str))
 
 
@@ -354,10 +353,9 @@ def count_members_in_rooms(dates_raw, opts):    #pylint: disable=W0613
     """ Construct the memberCount dict { 'Bob': {'inlaw': count, 'master' count, ...}...}
         for season up to today.
     """
-    member_counts = {}
-    # init the member_counts with the first name {rooms}
-    for event in dates_raw:
-        member_counts[gevent_to_member_name(event)] = {room:0 for room in ROOMS+('total',)}
+    # init the member_counts with the first {name: {rooms}}
+    member_counts = {gevent_to_member_name(event): \
+        {room:0 for room in ROOMS+('total',)} for event in dates_raw}
     # add ['middle']='Logan' or blank for all rooms
     for event in dates_raw:
         # print '*****',gevent_to_member_name(event),
@@ -370,7 +368,7 @@ def count_members_in_rooms(dates_raw, opts):    #pylint: disable=W0613
                     member_counts[event[room]][room] = member_counts[event[room]][room]+1
                 except KeyError as why:
                     msg = getattr(why, 'message', repr(why))
-                    print("FAILED room=%s\nevent=%r\n%s\n"%(room,event,msg))
+                    print("FAILED room=%s\nevent=%r\n%s\n"%(room, event, msg))
                     print("member_counts=%r\n"%member_counts)
 
     return member_counts
@@ -459,34 +457,40 @@ def main(opts):
     expand_multi_nights(dates_raw)  # add more date dicts to fill in between night and leaving
     add_day_of_week(dates_raw)      # add 'night_abrev' field to the date dicts
 
-    dates_raw = fix_spelling(dates_raw, opts)  # catch data entry errors
+    dates_raw = fix_spelling(dates_raw)  # catch data entry errors
 
     if opts['--debug']:
-        show_raw(dates_raw, True)
+        debug_print_raw(dates_raw)
 
-    put_members_in_rooms(dates_raw, opts)  # to each date, add entries for each room
+    put_members_in_rooms(dates_raw)  # to each date, add entries for each room
 
-    # done filling the dicts... time to start printing!
-    # dates_raw has whole season ----------------------
+    if opts['--shift']:
+        dt_today = datetime.datetime.now() + datetime.timedelta(days=int(opts['--shift']))
+        print('Shifted to ', ('%s'%dt_today)[:16])
+
     dates_past = select_dates(dates_raw, opts, None, 0)
+    dates_past = [add_guest_fee(event, opts) for event in dates_past]
     # dates_raw[] is now a list of  {'night':'2016-12-15', 'member':'Peter',
-    #           'where':'master', 'master':'Peter', 'in-law':'', 'midle':'', ...}
-    # dates_past[] has only the dates to the present
+    #           'where':'master', 'master':'Peter', 'in-law':'', 'middle':'', ...}
+    # dates_past[] has only past dates but includes a 'guest_fee' key (+ paid, - owed)
+
     show_missing_rooms(dates_past, opts)    # always show any members I failed to assign to a room
 
     if opts['--whosup']:
-        show_whos_up(dates_raw, opts)
+        print("Here's who I've heard from:")
+        dates_coming_up = select_dates(dates_raw, opts, -2, 7)
+        whos_up_dict = get_whos_up(dates_coming_up)
+        show_whos_up(whos_up_dict)
 
     if opts['--raw']:
-        show_raw(dates_raw, False)
+        show_raw(dates_raw)
 
-    if opts['--guests']:
-        show_guest_fees(dates_past, opts)
-
-    if opts['--member']:
-        for one_member in opts['--member'].split(','):
-            dates_past_member = [x for x in dates_past if one_member in x['member'].split()]
-            show_guest_fees(dates_past_member, opts)
+    # always show the guest fee accounts
+    deadbeats, sponsors = get_deadbeat_sponsors(dates_past)
+    print('\nMembers owing guest fees')
+    show_guest_fees(deadbeats)
+    print('\nMembers who have paid their guest fees (Yay!)')
+    show_guest_fees(sponsors)
 
     if opts['--nights']:
         show_nights(dates_past, opts)
@@ -499,5 +503,5 @@ def main(opts):
 
 
 if __name__ == '__main__':
-    OPTS = docopt.docopt(USE_STR, version='0.0.9')
+    OPTS = docopt.docopt(USE_STR, version='0.1.0')
     main(OPTS)

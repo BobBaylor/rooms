@@ -13,7 +13,7 @@ import os
 USE_STR = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--counts] [--debug] [--guests] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
+  rooms  [--counts] [--debug] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
   rooms  -h | --help
   rooms  -v | --version
  Options:
@@ -192,7 +192,8 @@ def select_dates(dates_raw, opts, day0=None, day1=None):
     season_end = datetime.datetime(1+int(opts['--year']), 5, 1)   # season ends May 1
     date0 = season_start if day0 is None else dt_today + datetime.timedelta(days=day0)
     date1 = season_end if day1 is None else dt_today + datetime.timedelta(days=day1)
-    # print 'select',date0.strftime('%a %m/%d'), date1.strftime('%a %m/%d')
+    if opts['--debug']:
+        print('select',date0.strftime('%a %m/%d'), date1.strftime('%a %m/%d'))
     return [e for e in dates_raw if bool(date0 <= e['date'] <= date1)]
 
 
@@ -202,7 +203,7 @@ def debug_print_raw(dates_raw):
     """
     print('** dates_raw')
     print('{'+ '},\n{'.join([', '.join(
-        ["'%s':'%s'"%(n, e[n]) for n in ('night_abrev', 'member', 'where', 'leave')]
+        ["'%s':'%s'"%(n, e[n]) for n in ('night', 'leave', 'member', 'where')]
         ) for e in dates_raw]) +'}')
 
 
@@ -213,7 +214,7 @@ def show_raw(dates_raw):
     print('')
     print('%10s %20s %-20s'%('', '', 'Raw Calendar',)+' '.join(['%10s'%r for r in ROOMS]))
     for date in dates_raw:
-        print('%10s %-20s %-20s'%(date['night_abrev'],
+        print('%10s %-20s %-20s'%(date['night'],
                                   date['member'],
                                   date['where'].strip()) +
               ' '.join(['%10s'%date[room] for room in ROOMS]))
@@ -269,13 +270,16 @@ def show_guest_fees(members):
         or '  none' if there are no guest fees.
     """
     out_lst = []
+    total = 0
     for member in members:
-        total = sum([x[1] for x in members[member]])
+        mem_total = sum([x[1] for x in members[member]])
         dates = [x[0].split()[1] for x in members[member]]
-        if total:
-            out_lst += ['$%4d %10s: %s'%(total, member, ", ".join(dates))]
+        if mem_total:
+            out_lst += ['$%4d %10s: %s'%(mem_total, member, ", ".join(dates))]
+            total += mem_total
     if out_lst:
         print('\n'.join(out_lst))
+        print('$%4d %10s'%(total, 'total'))
     else:
         print('  none')
 
@@ -307,7 +311,8 @@ def show_whos_up(whos_up_dict):
 
     # whos_up_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
     # sort by the begining night of stay (the p_ord value, above)
-    for member_ass in sorted(list(whos_up_dict.items()), key=lambda k_v: k_v[1][0]):
+    # for member_ass in sorted(list(whos_up_dict.items()), key=lambda k_v: k_v[1][0]):
+    for member_ass in list(whos_up_dict.items()):   
         # member_ass =  ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         day_tup = member_ass[1][2:]    #  [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
         room = day_tup[0][0]     # save the room so we only print it when it changes
@@ -488,16 +493,19 @@ def main(opts):
         print("Here's who I've heard from:")
         dates_coming_up = select_dates(dates_raw, opts, -2, 7)
         whos_up_dict = get_whos_up(dates_coming_up)
-        show_whos_up(whos_up_dict)
+        if whos_up_dict:
+            show_whos_up(whos_up_dict)
+        else:
+            print('    no one!\n')
 
     if opts['--raw']:
         show_raw(dates_raw)
 
     # always show the guest fee accounts
     deadbeats, sponsors = get_deadbeat_sponsors(dates_past)
-    print('\nMembers owing guest fees')
+    print('\nMembers who owe guest fees:')
     show_guest_fees(deadbeats)
-    print('\nMembers who have paid their guest fees (Yay!)')
+    print('\nMembers who have paid their guest fees:  (Yay!)')
     show_guest_fees(sponsors)
 
     if opts['--nights']:

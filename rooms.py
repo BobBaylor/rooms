@@ -193,7 +193,7 @@ def select_dates(dates_raw, opts, day0=None, day1=None):
     date0 = season_start if day0 is None else dt_today + datetime.timedelta(days=day0)
     date1 = season_end if day1 is None else dt_today + datetime.timedelta(days=day1)
     if opts['--debug']:
-        print('select',date0.strftime('%a %m/%d'), date1.strftime('%a %m/%d'))
+        print('select', date0.strftime('%a %m/%d'), date1.strftime('%a %m/%d'))
     return [e for e in dates_raw if bool(date0 <= e['date'] <= date1)]
 
 
@@ -312,7 +312,7 @@ def show_whos_up(whos_up_dict):
     # whos_up_dict['Bob'] = [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ]
     # sort by the begining night of stay (the p_ord value, above)
     # for member_ass in sorted(list(whos_up_dict.items()), key=lambda k_v: k_v[1][0]):
-    for member_ass in list(whos_up_dict.items()):   
+    for member_ass in list(whos_up_dict.items()):
         # member_ass =  ('Bob', [0, 'Bob', ('middle','Mon 12/24'), ('middle','Tue 12/25'), ])
         day_tup = member_ass[1][2:]    #  [('middle','Mon 12/24'), ('middle','Tue 12/25'),]
         room = day_tup[0][0]     # save the room so we only print it when it changes
@@ -414,7 +414,6 @@ def gevent_to_member_name(event):
 def main(opts):
     """ the program
     """
-
     # ignore line-to-long
     #pylint: disable=C0301
     if opts['--offline']:
@@ -429,7 +428,7 @@ def main(opts):
             {'leave': '2018-12-24', 'member': 'James, Jean', 'where': 'in-law', 'night': '2018-12-14'},
             {'leave': '2018-12-23', 'member': 'Dina', 'where': 'master', 'night': '2018-12-20'},
             {'leave': '2018-12-30', 'member': 'Jon, Sam, Z', 'where': 'bunk', 'night': '2018-12-20'},
-            {'leave': '2018-12-26', 'member': 'Bob +1', 'where': 'middle', 'night': '2018-12-22'},
+            {'leave': '2018-12-26', 'member': 'Bob +1 $', 'where': 'middle', 'night': '2018-12-22'},
             {'leave': '2018-12-28', 'member': 'Erin +1', 'where': 'master', 'night': '2018-12-23'},
             {'leave': '2018-12-26', 'member': 'Dina', 'where': 'in-law', 'night': '2018-12-23'},
             {'leave': '2018-12-28', 'member': 'Peter', 'where': 'in-law', 'night': '2018-12-25'},
@@ -456,6 +455,15 @@ def main(opts):
             {'leave': '2019-02-10', 'member': 'Mark', 'where': '', 'night': '2019-02-08'},
             {'leave': '2019-02-10', 'member': 'Bob', 'where': '', 'night': '2019-02-09'},
             ]
+        # start in the middle of the test data
+        test_shift = datetime.datetime.strptime(dates_raw[len(dates_raw)//2]['night'], '%Y-%m-%d')
+        test_shift -= datetime.datetime.utcnow()
+        test_shift = test_shift.days
+        if opts['--shift']:
+            opts['--shift'] = str(int(opts['--shift']) + test_shift)
+        else:
+            opts['--shift'] = str(test_shift)
+
     else:
         credentials = get_credentials(opts)
         events_raw = get_events_raw(credentials, opts)
@@ -481,13 +489,11 @@ def main(opts):
         dt_today = datetime.datetime.now() + datetime.timedelta(days=int(opts['--shift']))
         print('Shifted to ', ('%s'%dt_today)[:16])
 
-    dates_past = select_dates(dates_raw, opts, None, 0)
-    dates_past = [add_guest_fee(event, opts) for event in dates_past]
     # dates_raw[] is now a list of  {'night':'2016-12-15', 'member':'Peter',
     #           'where':'master', 'master':'Peter', 'in-law':'', 'middle':'', ...}
-    # dates_past[] has only past dates but includes a 'guest_fee' key (+ paid, - owed)
 
-    show_missing_rooms(dates_past, opts)    # always show any members I failed to assign to a room
+     # always flag any members I failed to assign to a room
+    show_missing_rooms(select_dates(dates_raw, opts, None, 0), opts)
 
     if opts['--whosup']:
         print("Here's who I've heard from:")
@@ -502,6 +508,9 @@ def main(opts):
         show_raw(dates_raw)
 
     # always show the guest fee accounts
+    # give members 2 days before mentioning guest fees
+    dates_past = [add_guest_fee(event, opts) for event in select_dates(dates_raw, opts, None, -2)]
+    # dates_past[] includes a 'guest_fee' key (+ paid, - owed)
     deadbeats, sponsors = get_deadbeat_sponsors(dates_past)
     print('\nMembers who owe guest fees:')
     show_guest_fees(deadbeats)

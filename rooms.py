@@ -418,52 +418,52 @@ def main(opts):
     #pylint: disable=C0301
     if opts['--offline']:
         dates_raw = [
-            {'leave': '2018-12-02', 'member': 'Bob', 'where': 'master', 'night': '2018-12-01'},
-            {'leave': '2018-12-02', 'member': 'James, Jean', 'where': 'in-law', 'night': '2018-12-01'},
-            {'leave': '2018-12-02', 'member': 'Peter', 'where': 'middle', 'night': '2018-12-01'},
-            {'leave': '2018-12-06', 'member': 'James, Jean', 'where': 'in-law', 'night': '2018-12-02'},
-            {'leave': '2018-12-03', 'member': 'Peter', 'where': 'middle', 'night': '2018-12-02'},
-            {'leave': '2018-12-09', 'member': 'Bob', 'where': 'master', 'night': '2018-12-08'},
-            {'leave': '2018-12-14', 'member': 'Jon', 'where': 'loft', 'night': '2018-12-10'},
-            {'leave': '2018-12-24', 'member': 'James, Jean', 'where': 'in-law', 'night': '2018-12-14'},
-            {'leave': '2018-12-23', 'member': 'Dina', 'where': 'master', 'night': '2018-12-20'},
-            {'leave': '2018-12-30', 'member': 'Jon, Sam, Z', 'where': 'bunk', 'night': '2018-12-20'},
-            {'leave': '2018-12-26', 'member': 'Bob +1 $', 'where': 'middle', 'night': '2018-12-22'},
-            {'leave': '2018-12-28', 'member': 'Erin +1', 'where': 'master', 'night': '2018-12-23'},
-            {'leave': '2018-12-26', 'member': 'Dina', 'where': 'in-law', 'night': '2018-12-23'},
-            {'leave': '2018-12-28', 'member': 'Peter', 'where': 'in-law', 'night': '2018-12-25'},
-            {'leave': '2018-12-30', 'member': 'Dina', 'where': 'middle', 'night': '2018-12-26'},
-            {'leave': '2019-01-12', 'member': 'James, Jean', 'where': 'middle', 'night': '2019-01-09'},
-            {'leave': '2019-01-13', 'member': 'Bob +1', 'where': 'master', 'night': '2019-01-12'},
-            {'leave': '2019-01-13', 'member': 'James, Jean +2', 'where': 'middle, bunk', 'night': '2019-01-12'},
-            {'leave': '2019-01-17', 'member': 'Jon', 'where': 'in-law', 'night': '2019-01-13'},
-            {'leave': '2019-01-16', 'member': 'Jean, James +1', 'where': 'middle, bunk', 'night': '2019-01-13'},
-            {'leave': '2019-01-18', 'member': 'Peter', 'where': 'master', 'night': '2019-01-15'},
-            {'leave': '2019-01-21', 'member': 'Jon +1 +Z', 'where': 'bunk', 'night': '2019-01-18'},
-            {'leave': '2019-01-21', 'member': 'Dina', 'where': 'in-law', 'night': '2019-01-18'},
-            {'leave': '2019-01-22', 'member': 'Glenn', 'where': 'master', 'night': '2019-01-18'},
-            {'leave': '2019-01-20', 'member': 'Erin', 'where': 'loft', 'night': '2019-01-18'},
-            {'leave': '2019-01-20', 'member': 'Bob +1', 'where': 'middle', 'night': '2019-01-19'},
-            {'leave': '2019-01-25', 'member': 'James', 'where': 'in-law', 'night': '2019-01-21'},
-            {'leave': '2019-01-27', 'member': 'Mark +1', 'where': 'middle, loft', 'night': '2019-01-25'},
-            {'leave': '2019-01-27', 'member': 'Glenn', 'where': 'in-law', 'night': '2019-01-25'},
-            {'leave': '2019-02-01', 'member': 'James', 'where': 'bunk', 'night': '2019-01-25'},
-            {'leave': '2019-01-27', 'member': 'Bob', 'where': 'master', 'night': '2019-01-26'},
-            {'leave': '2019-02-01', 'member': 'Jon', 'where': 'in-law', 'night': '2019-01-27'},
-            {'leave': '2019-02-06', 'member': 'Mark', 'where': 'master', 'night': '2019-02-04'},
-            {'leave': '2019-02-08', 'member': 'Jon', 'where': 'in-law', 'night': '2019-02-05'},
-            {'leave': '2019-02-10', 'member': 'Mark', 'where': '', 'night': '2019-02-08'},
-            {'leave': '2019-02-10', 'member': 'Bob', 'where': '', 'night': '2019-02-09'},
-            ]
+            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'Bob', 'where':'master'},
+            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'James, Jean', 'where':'in-law'},
+            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'Peter', 'where':'middle'},
+            {'night':'2018-12-02', 'leave':'2018-12-06', 'member':'James, Jean', 'where':'in-law'},
+            {'night':'2018-12-02', 'leave':'2018-12-03', 'member':'Peter', 'where':'middle'},
+            {'night':'2018-12-08', 'leave':'2018-12-09', 'member':'Bob', 'where':'master'},
+            {'night':'2018-12-10', 'leave':'2018-12-14', 'member':'Jon', 'where':'loft'},
+            {'night':'2018-12-14', 'leave':'2018-12-24', 'member':'James, Jean', 'where':'in-law'},
+            {'night':'2018-12-20', 'leave':'2018-12-23', 'member':'Dina', 'where':'master'},
+            {'night':'2018-12-20', 'leave':'2018-12-30', 'member':'Jon, Sam, Z', 'where':'bunk'},
+            {'night':'2018-12-22', 'leave':'2018-12-26', 'member':'Bob +1 $', 'where':'middle'},
+            {'night':'2018-12-23', 'leave':'2018-12-28', 'member':'Erin +1', 'where':'master'},
+            {'night':'2018-12-23', 'leave':'2018-12-26', 'member':'Dina', 'where':'in-law'},
+            {'night':'2018-12-25', 'leave':'2018-12-28', 'member':'Peter', 'where':'in-law'},
+            {'night':'2018-12-26', 'leave':'2018-12-30', 'member':'Dina', 'where':'middle'},
+            {'night':'2019-01-09', 'leave':'2019-01-12', 'member':'James, Jean', 'where':'middle'},
+            {'night':'2019-01-12', 'leave':'2019-01-13', 'member':'Bob +1', 'where':'master'},
+            {'night':'2019-01-12', 'leave':'2019-01-13', 'member':'James, Jean +2', 'where':'middle, bunk'},
+            {'night':'2019-01-13', 'leave':'2019-01-17', 'member':'Jon', 'where':'in-law'},
+            {'night':'2019-01-13', 'leave':'2019-01-16', 'member':'Jean, James +1', 'where':'middle, bunk'},
+            {'night':'2019-01-15', 'leave':'2019-01-18', 'member':'Peter', 'where':'master'},
+            {'night':'2019-01-18', 'leave':'2019-01-21', 'member':'Jon +1 +Z', 'where':'bunk'},
+            {'night':'2019-01-18', 'leave':'2019-01-21', 'member':'Dina', 'where':'in-law'},
+            {'night':'2019-01-18', 'leave':'2019-01-22', 'member':'Glenn', 'where':'master'},
+            {'night':'2019-01-18', 'leave':'2019-01-20', 'member':'Erin', 'where':'loft'},
+            {'night':'2019-01-19', 'leave':'2019-01-20', 'member':'Bob +1', 'where':'middle'},
+            {'night':'2019-01-21', 'leave':'2019-01-25', 'member':'James', 'where':'in-law'},
+            {'night':'2019-01-25', 'leave':'2019-01-27', 'member':'Mark +1', 'where':'middle, loft'},
+            {'night':'2019-01-25', 'leave':'2019-01-27', 'member':'Glenn', 'where':'in-law'},
+            {'night':'2019-01-25', 'leave':'2019-02-01', 'member':'James', 'where':'bunk'},
+            {'night':'2019-01-26', 'leave':'2019-01-27', 'member':'Bob', 'where':'master'},
+            {'night':'2019-01-27', 'leave':'2019-02-01', 'member':'Jon', 'where':'in-law'},
+            {'night':'2019-02-04', 'leave':'2019-02-06', 'member':'Mark', 'where':'master'},
+            {'night':'2019-02-05', 'leave':'2019-02-08', 'member':'Jon', 'where':'in-law'},
+            {'night':'2019-02-08', 'leave':'2019-02-10', 'member':'Mark', 'where':''},
+            {'night':'2019-02-09', 'leave':'2019-02-10', 'member':'Bob', 'where':''}
+        ]
         # start in the middle of the test data
         test_shift = datetime.datetime.strptime(dates_raw[len(dates_raw)//2]['night'], '%Y-%m-%d')
+        opts['--year'] = str(datetime.datetime.strptime(dates_raw[0]['night'], '%Y-%m-%d').year)
         test_shift -= datetime.datetime.utcnow()
         test_shift = test_shift.days
         if opts['--shift']:
             opts['--shift'] = str(int(opts['--shift']) + test_shift)
         else:
             opts['--shift'] = str(test_shift)
-
     else:
         credentials = get_credentials(opts)
         events_raw = get_events_raw(credentials, opts)
@@ -473,15 +473,15 @@ def main(opts):
         dates_raw = events_to_raw_dates(events_raw, opts)
         # print ',\n'.join([repr(x) for x in dates_raw])
     #pylint: enable=C0301
+    if opts['--debug']:
+        print('opts:\n', '\n'.join(['%s: %r'%(k, opts[k]) for k in opts if '--' in k]))
+        debug_print_raw(dates_raw)
 
     # dates_raw is a list of dicts. The dates_raw dicts need a few more fields...
     expand_multi_nights(dates_raw)  # add more date dicts to fill in between night and leaving
     add_day_of_week(dates_raw)      # add 'night_abrev' field to the date dicts
 
     dates_raw = fix_spelling(dates_raw)  # catch data entry errors
-
-    if opts['--debug']:
-        debug_print_raw(dates_raw)
 
     put_members_in_rooms(dates_raw)  # to each date, add entries for each room
 

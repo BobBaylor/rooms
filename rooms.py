@@ -2,9 +2,41 @@
 """
 based on this quickstart:
 from  https://developers.google.com/google-apps/calendar/quickstart/python
-I had to use easy_tools to install instead of pip
-    easy_install --upgrade google-api-python-client
-And don't forget to put client_secret.json in ~/.credentials
+Don't forget to put CLIENT_SECRET_FILE in ~/.credentials
+
+Note: the above URL redirects to
+https://developers.google.com/calendar/quickstart/python
+which has a different sequence for get_credentials(). The one in this file still
+seems to work... TODO: test that it really does work and perhaps update to the newer version.
+
+Usage:
+    The google calendar is the database. Calendar events are added as they are made known to the
+    calendar owner (me). Members are encouraged to add this calendar to their calendar viewing
+    apps so they can see who else will be in the cabin on any given night. The first word in the
+    event 'summary' (the thing that shows up in your calendar view) shold be the member name.
+    Append something in Camel-case to avoid name collisions e.g. 'BobB' and 'BobS'. Guests are
+    indicated by a +N (separated by whitespace. N is the guest count).
+
+    Around Thursday of each week, I assign rooms by inserting the room name into the 'description'
+    in the calendar event. Then I run this script and, if the output looks OK, paste it into the
+    communication to the members (Slack, email, whatever). Often, members have a room preference
+    which I keep in an event in my personal calendar. I try to honor their preferences and follow
+    other social norms such as not booking un-related men and women in the same bed/room but
+    on popular nights, that might be unavoidable.
+
+    As members pay their guest fees, I add a '$' (w/ whitespace) to the 'summary'. The '$'
+    moves them from the 'deadbeat' list to the 'sponsor' list in the weekly communications.
+
+Customization:
+    Obviously, you need to use your own google calendar.
+    Replace ROOMS with the appropriate selection for your situation.
+    DAYS_PEAK, GUEST_FEES_MID, and GUEST_FEES_PEAK may also need your attention.
+    Member names are extracted from the calendar, so no need to do anything in this file, but
+    you should probably examine fix_spelling() and add_guest_fees() since they implement rules
+    that are specific to my cabin.
+
+I don't use f-strings because the raspberry pi that I sometimes run this on only has python 3.4
+and I'm too lazy to install 3.7
 """
 import datetime
 import os
@@ -44,12 +76,15 @@ except ImportError:
 # If modifying these scopes, delete your previously saved credentials
 # at ~/.credentials/calendar-python-quickstart.json
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
-CLIENT_SECRET_FILE = 'client_secret.json'
 APPLICATION_NAME = 'Google Calendar API Python Quickstart'
+
+# why do I have 2 different client secret files? TODO
+CLIENT_SECRET_FILE = 'calendar-python-quickstart.json'
+CLIENT_SECRET_FILE_ANOTHER = 'client_secret.json'
 
 ROOMS = ('in-law', 'master', 'middle', 'bunk', 'loft',)    # assignable rooms in the cabin
 
-""" gPeak is a list of days-of-the-week or dates that guest fee is higher than not.
+""" DAYS_PEAK is a list of days-of-the-week or dates that guest fee is higher than not.
     The dates are specific to the Julian calendar of each season.
     The year index is the season *start* year.
 """
@@ -60,6 +95,7 @@ DAYS_PEAK = {
     '2019': ['Fri', 'Sat']+['12/%2d'%x for x in range(15, 32)]+['01/01',          '02/16',], #pylint: disable=C0326
     }
 
+# "mid week" and "weekend/holiday" guest fee in dollars
 GUEST_FEE_MID = 30
 GUEST_FEE_PEAK = 35
 
@@ -74,19 +110,22 @@ def get_credentials(opts):
     credential_dir = os.path.join(home_dir, '.credentials')
     if not os.path.exists(credential_dir):
         os.makedirs(credential_dir)
-    credential_path = os.path.join(credential_dir, 'calendar-python-quickstart.json')
+    credential_path = os.path.join(credential_dir, CLIENT_SECRET_FILE)
     if opts['--debug']:
         print('** using credentials at '+credential_path)
+        with open(credential_path) as cred_file:
+            cred_text = cred_file.read()
+            print('\n'.join(cred_text.split(',')))
     store = Storage(credential_path)
     credentials = store.get()
     if not credentials or credentials.invalid:
-        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE_ANOTHER, SCOPES)
         flow.user_agent = APPLICATION_NAME
         # if flags:
         credentials = tools.run_flow(flow, store) #, flags)
         # else: # Needed only for compatibility with Python 2.6
         # credentials = tools.run(flow, store)
-        print('Storing credentials to ' + credential_path)
+        print('Storing credentials to ' + credential_path)        # except, I'm not storing them?
     return credentials
 
 
@@ -103,12 +142,12 @@ def get_events(cred, **kwargs):
 
 
 def get_events_raw(credentials, opts):
-    """  Grab the entire calendar for the season from Dec 1 to May 1
+    """  Grab the entire calendar for the season from Nov 29 to May 1
         ctor the dicts with night, leave, summary, description keys.
         nightShort is added later by more_dates()
     """
-    day0 = datetime.datetime(int(opts['--year']), 12, 1).isoformat()+'Z'
-    day1 = datetime.datetime(int(opts['--year']) + 1, 5, 1).isoformat()+'Z'
+    day0 = datetime.datetime(*opts['season_start']).isoformat()+'Z'
+    day1 = datetime.datetime(*opts['season_end']).isoformat()+'Z'
     events = get_events(
         credentials,
         timeMin=day0,
@@ -159,7 +198,6 @@ def expand_multi_nights(dates_raw):
 def add_day_of_week(dates_raw):
     """ Use 'date of "2016-12-23" to make night_abrev of "Fri 12/23" """
     for one_date in dates_raw:
-
         one_date['night_abrev'] = one_date['date'].strftime('%a %m/%d')
     dates_raw = dates_raw.sort(key=lambda x: x['date'])
 
@@ -188,8 +226,8 @@ def select_dates(dates_raw, opts, day0=None, day1=None):
     dt_today = datetime.datetime.utcnow()
     if opts['--shift']:
         dt_today += datetime.timedelta(days=int(opts['--shift']))
-    season_start = datetime.datetime(int(opts['--year']), 12, 1)  # season starts Dec 1
-    season_end = datetime.datetime(1+int(opts['--year']), 5, 1)   # season ends May 1
+    season_start = datetime.datetime(*opts['season_start'])
+    season_end = datetime.datetime(*opts['season_end'])
     date0 = season_start if day0 is None else dt_today + datetime.timedelta(days=day0)
     date1 = season_end if day1 is None else dt_today + datetime.timedelta(days=day1)
     if opts['--debug']:
@@ -235,7 +273,7 @@ def put_members_in_rooms(dates_raw):
 def add_guest_fee(event, opts):
     """ add 'guest_fee' key to a dates_raw event
         0 means no guest, negative means fee is OWED, positive means paid
-        a '+ indicatees guests but not Z+1 (Sam).
+        a '+ indicatees guests but not Z+1 (Sam is not charged).
         Enter "Z +1" to indicate not Sam (chargable)
     """
     if '+' in event['member'] and 'Z+1' not in event['member']:
@@ -249,7 +287,9 @@ def add_guest_fee(event, opts):
 
 
 def get_deadbeat_sponsors(dates_past):
-    """ return dicts of members and their guest fee accounts
+    """ return dicts of members and their guest fee accounts.
+        deadbeats owe guest fees
+        sponsors have paid their guest fees. A member may appear in both.
     """
     # init the member dicts with  {name: []}
     deadbeats = {gevent_to_member_name(event): [] for event in dates_past}
@@ -282,7 +322,6 @@ def show_guest_fees(members):
         print('$%4d %10s'%(total, 'total'))
     else:
         print('  none')
-
 
 
 def get_whos_up(dates_selected):
@@ -347,19 +386,22 @@ def show_nights(dates_past, opts):      #pylint: disable=W0613
         date,      inlaw, master, middle,  bunk,  loft
                    who,   who,    who,     who,   who
     """
-    dates_combo = [dates_past[0].copy()]
-    for date in dates_past[1:]:
-        if dates_combo[-1]['night_abrev'] not in date['night_abrev']:        # new date
-            dates_combo += [date.copy()]
-        else:
-            for room in ROOMS:
-                sep = ',' if date[room] and dates_combo[-1][room] else ''
-                dates_combo[-1][room] = dates_combo[-1][room]+sep+date[room]
-    # dates_combo[] is {'night':'2016-12-15', 'member':'Logan', 'where':'master',
-    #       'master':'Logan', 'in-law':'Bob', 'middle':'Mark', ...}
-    print('\n%10s '%('Nights')+' '.join(['%16s'%room for room in ROOMS]))
-    for date in dates_combo:
-        print('%10s '%(date['night_abrev'])+' '.join(['%16s'%date[room] for room in ROOMS]))
+    if dates_past:
+        dates_combo = [dates_past[0].copy()]
+        for date in dates_past[1:]:
+            if dates_combo[-1]['night_abrev'] not in date['night_abrev']:        # new date
+                dates_combo += [date.copy()]
+            else:
+                for room in ROOMS:
+                    sep = ',' if date[room] and dates_combo[-1][room] else ''
+                    dates_combo[-1][room] = dates_combo[-1][room]+sep+date[room]
+        # dates_combo[] is {'night':'2016-12-15', 'member':'Logan', 'where':'master',
+        #       'master':'Logan', 'in-law':'Bob', 'middle':'Mark', ...}
+        print('\n%10s '%('Nights')+' '.join(['%16s'%room for room in ROOMS]))
+        for date in dates_combo:
+            print('%10s '%(date['night_abrev'])+' '.join(['%16s'%date[room] for room in ROOMS]))
+    else:
+        print('\n** no events found by show_dates()')
 
 
 def count_members_in_rooms(dates_raw, opts):    #pylint: disable=W0613
@@ -411,6 +453,14 @@ def gevent_to_member_name(event):
     return member
 
 
+def opts_add_season(opts):
+    """ The Lone CLone cabin runs for the first weekend in Dec to the last in April.
+        Sometimes, that includes the end of November ;-)
+    """
+    opts['season_start'] = (int(opts['--year']), 11, 29,)
+    opts['season_end'] = (int(opts['--year'])+1, 5, 1,)
+
+
 def main(opts):
     """ the program
     """
@@ -458,6 +508,7 @@ def main(opts):
         # start in the middle of the test data
         test_shift = datetime.datetime.strptime(dates_raw[len(dates_raw)//2]['night'], '%Y-%m-%d')
         opts['--year'] = str(datetime.datetime.strptime(dates_raw[0]['night'], '%Y-%m-%d').year)
+        opts_add_season(opts)
         test_shift -= datetime.datetime.utcnow()
         test_shift = test_shift.days
         if opts['--shift']:
@@ -465,6 +516,7 @@ def main(opts):
         else:
             opts['--shift'] = str(test_shift)
     else:
+        opts_add_season(opts)
         credentials = get_credentials(opts)
         events_raw = get_events_raw(credentials, opts)
         # print('events', ',\n'.join([repr(x) for x in events_raw]))
@@ -509,14 +561,15 @@ def main(opts):
 
     # always show the guest fee accounts
     # give members 2 days before mentioning guest fees
-    dates_past = [add_guest_fee(event, opts) for event in select_dates(dates_raw, opts, None, -2)]
-    # dates_past[] includes a 'guest_fee' key (+ paid, - owed)
-    deadbeats, sponsors = get_deadbeat_sponsors(dates_past)
+    dates_guests = [add_guest_fee(event, opts) for event in select_dates(dates_raw, opts, None, -2)]
+    # dates_guests[] includes a 'guest_fee' key (+ paid, - owed)
+    deadbeats, sponsors = get_deadbeat_sponsors(dates_guests)
     print('\nMembers who owe guest fees:')
     show_guest_fees(deadbeats)
     print('\nMembers who have paid their guest fees:  (Yay!)')
     show_guest_fees(sponsors)
 
+    dates_past = select_dates(dates_raw, opts, None, 0)
     if opts['--nights']:
         show_nights(dates_past, opts)
 
@@ -528,5 +581,5 @@ def main(opts):
 
 
 if __name__ == '__main__':
-    OPTS = docopt.docopt(USE_STR, version='0.1.0')
+    OPTS = docopt.docopt(USE_STR, version='0.9.0')
     main(OPTS)

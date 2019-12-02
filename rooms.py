@@ -58,7 +58,7 @@ USE_STR = """
   -s --shift <S>          move 'today' by integer number of days
   -v --version            show the version
   -w --whosup             show who's up in the next week
-  -y --year <Y>           year season starts [default: 2018]
+  -y --year <Y>           year season starts [default: 2019]
     """
 
 try:

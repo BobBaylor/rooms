@@ -45,7 +45,7 @@ import os
 USE_STR = """
  --Show room usage in Lone Clone Ski Cabin--
  Usage:
-  rooms  [--counts] [--debug] [--nights] [--offline] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
+  rooms  [--counts] [--debug] [--nights] [--offline] [--peak] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
   rooms  -h | --help
   rooms  -v | --version
  Options:
@@ -54,6 +54,7 @@ USE_STR = """
   -d --debug              show stuff
   -n --nights             show who slept where, each night
   -o --offline            don't get the live calendar. Use a test data set
+  -p --peak               Show peak nights for this season, exlcuding Fri and Sat
   -r --raw                show the raw calendar events
   -s --shift <S>          move 'today' by integer number of days
   -v --version            show the version
@@ -87,8 +88,9 @@ ROOMS = ('in-law', 'master', 'middle', 'bunk', 'loft',)    # assignable rooms in
 """ DAYS_PEAK is a list of days-of-the-week or dates that guest fee is higher than not.
     The dates are specific to the Julian calendar of each season.
     The year index is the season *start* year.
+    Note: Fri and Sat should always be the first 2 entries
 """
-DAYS_PEAK = {
+NIGHTS_PEAK = {
     '2016': ['Fri', 'Sat']+['12/%2d'%x for x in range(18, 32)]+['01/01', '01/02', '02/19',], #pylint: disable=C0326
     '2017': ['Fri', 'Sat']+['12/%2d'%x for x in range(17, 32)]+['01/01',          '02/18',], #pylint: disable=C0326
     '2018': ['Fri', 'Sat']+['12/%2d'%x for x in range(16, 32)]+['01/01',          '02/17',], #pylint: disable=C0326
@@ -278,7 +280,16 @@ def add_guest_fee(event, opts):
     """
     if '+' in event['member'] and 'Z+1' not in event['member']:
         event['guest_fee'] = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
-            for x in DAYS_PEAK[opts['--year']]]) else GUEST_FEE_MID
+            for x in NIGHTS_PEAK[opts['--year']]]) else GUEST_FEE_MID
+        # look for the guest count after the '+'
+        # we don't get here if 'Z+1' in the event so OK to split on '+'
+        str_guest_count = event['member'].split('+')[-1].strip()
+        try:
+            guest_count = int(str_guest_count)
+        except ValueError:
+            print('** FAILED to convert guest count', event['member'], 'on', event['night_abrev'])
+            guest_count = 1
+        event['guest_fee'] = guest_count * event['guest_fee']
         if '$' not in event['member']:
             event['guest_fee'] = -event['guest_fee']    # OWED
     else:
@@ -460,8 +471,9 @@ def opts_add_season(opts):
     opts['season_start'] = (int(opts['--year']), 11, 29,)
     opts['season_end'] = (int(opts['--year'])+1, 5, 1,)
 
-
-def main(opts):
+                        # yes, lots of branches and statements
+                        #pylint: disable=R0912
+def main(opts):         #pylint: disable=R0915
     """ the program
     """
     # ignore line-to-long
@@ -579,6 +591,12 @@ def main(opts):
         #           'bunk':1,  'loft':0}, 'Mark:{'master':1,...},...}
         show_room_counts(member_counts)
 
+    if opts['--peak']:
+        nights_extra = NIGHTS_PEAK[opts['--year']][2:]     # ignore Fri, Sat entries
+        print('\nPeak nights, excluding Friday and Saturday nights:', end='')
+        str_peak = ', '.join(['%s%s'%('' if i%8 != 0 else '\n   ',
+                                      x) for i, x in enumerate(nights_extra)])
+        print(str_peak)
 
 if __name__ == '__main__':
     OPTS = docopt.docopt(USE_STR, version='0.9.0')

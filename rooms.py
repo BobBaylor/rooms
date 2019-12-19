@@ -44,6 +44,7 @@ import os
 
 USE_STR = """
  --Show room usage in Lone Clone Ski Cabin--
+   Note: Enter guests as 'member +N' and, when paid, 'member $ +N'
  Usage:
   rooms  [--counts] [--debug] [--nights] [--offline] [--peak] [--raw] [--shift=<S>] [--whosup] [--year=<Y>]
   rooms  -h | --help

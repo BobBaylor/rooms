@@ -40,6 +40,7 @@ and I'm too lazy to install 3.7
 """
 import datetime
 import os
+import json
 
 
 USE_STR = """
@@ -96,6 +97,7 @@ NIGHTS_PEAK = {
     '2017': ['Fri', 'Sat']+['12/%2d'%x for x in range(17, 32)]+['01/01',          '02/18',], #pylint: disable=C0326
     '2018': ['Fri', 'Sat']+['12/%2d'%x for x in range(16, 32)]+['01/01',          '02/17',], #pylint: disable=C0326
     '2019': ['Fri', 'Sat']+['12/%2d'%x for x in range(15, 32)]+['01/01',          '02/16',], #pylint: disable=C0326
+    '2020': ['Fri', 'Sat']+['12/%2d'%x for x in range(20, 32)]+['01/01',          '02/14',], #pylint: disable=C0326
     }
 
 # "mid week" and "weekend/holiday" guest fee in dollars
@@ -282,15 +284,18 @@ def add_guest_fee(event, opts):
     if '+' in event['member'] and 'Z+1' not in event['member']:
         event['guest_fee'] = GUEST_FEE_PEAK if any([x in event['night_abrev'] \
             for x in NIGHTS_PEAK[opts['--year']]]) else GUEST_FEE_MID
+        # remove the 'paid' indicator ('$')
+        str_guest_count = event['member'].replace('$','')
         # look for the guest count after the '+'
         # we don't get here if 'Z+1' in the event so OK to split on '+'
-        str_guest_count = event['member'].split('+')[-1].strip()
+        str_guest_count = str_guest_count.split('+')[-1].strip()
         try:
             guest_count = int(str_guest_count)
         except ValueError:
             print('** FAILED to convert guest count', event['member'], 'on', event['night_abrev'])
             guest_count = 1
         event['guest_fee'] = guest_count * event['guest_fee']
+        # look for 'paid' indicator to see who's been naughty and who's been nice
         if '$' not in event['member']:
             event['guest_fee'] = -event['guest_fee']    # OWED
     else:
@@ -472,6 +477,28 @@ def opts_add_season(opts):
     opts['season_start'] = (int(opts['--year']), 11, 29,)
     opts['season_end'] = (int(opts['--year'])+1, 5, 1,)
 
+
+def read_test_dates_raw(file_name):
+    """Read test data from a json encoded file.
+    """
+    with open(file_name,'r') as fp:
+        dates_raw_test = json.load(fp)
+    return dates_raw_test
+
+
+def write_test_dates_raw(file_name, test_data):
+    """Write test data to a json encoded file.
+    """
+    with open(file_name,'w') as fp:
+        json.dump(test_data, fp)
+
+
+def create_test_dates_raw():
+    """Todo: make a list of dicts as expected from google calendar
+    """
+    return []
+
+
                         # yes, lots of branches and statements
                         #pylint: disable=R0912
 def main(opts):         #pylint: disable=R0915
@@ -480,44 +507,7 @@ def main(opts):         #pylint: disable=R0915
     # ignore line-to-long
     #pylint: disable=C0301
     if opts['--offline']:
-        dates_raw = [
-            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'Bob', 'where':'master'},
-            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'James, Jean', 'where':'in-law'},
-            {'night':'2018-12-01', 'leave':'2018-12-02', 'member':'Peter', 'where':'middle'},
-            {'night':'2018-12-02', 'leave':'2018-12-06', 'member':'James, Jean', 'where':'in-law'},
-            {'night':'2018-12-02', 'leave':'2018-12-03', 'member':'Peter', 'where':'middle'},
-            {'night':'2018-12-08', 'leave':'2018-12-09', 'member':'Bob', 'where':'master'},
-            {'night':'2018-12-10', 'leave':'2018-12-14', 'member':'Jon', 'where':'loft'},
-            {'night':'2018-12-14', 'leave':'2018-12-24', 'member':'James, Jean', 'where':'in-law'},
-            {'night':'2018-12-20', 'leave':'2018-12-23', 'member':'Dina', 'where':'master'},
-            {'night':'2018-12-20', 'leave':'2018-12-30', 'member':'Jon, Sam, Z', 'where':'bunk'},
-            {'night':'2018-12-22', 'leave':'2018-12-26', 'member':'Bob +1 $', 'where':'middle'},
-            {'night':'2018-12-23', 'leave':'2018-12-28', 'member':'Erin +1', 'where':'master'},
-            {'night':'2018-12-23', 'leave':'2018-12-26', 'member':'Dina', 'where':'in-law'},
-            {'night':'2018-12-25', 'leave':'2018-12-28', 'member':'Peter', 'where':'in-law'},
-            {'night':'2018-12-26', 'leave':'2018-12-30', 'member':'Dina', 'where':'middle'},
-            {'night':'2019-01-09', 'leave':'2019-01-12', 'member':'James, Jean', 'where':'middle'},
-            {'night':'2019-01-12', 'leave':'2019-01-13', 'member':'Bob +1', 'where':'master'},
-            {'night':'2019-01-12', 'leave':'2019-01-13', 'member':'James, Jean +2', 'where':'middle, bunk'},
-            {'night':'2019-01-13', 'leave':'2019-01-17', 'member':'Jon', 'where':'in-law'},
-            {'night':'2019-01-13', 'leave':'2019-01-16', 'member':'Jean, James +1', 'where':'middle, bunk'},
-            {'night':'2019-01-15', 'leave':'2019-01-18', 'member':'Peter', 'where':'master'},
-            {'night':'2019-01-18', 'leave':'2019-01-21', 'member':'Jon +1 +Z', 'where':'bunk'},
-            {'night':'2019-01-18', 'leave':'2019-01-21', 'member':'Dina', 'where':'in-law'},
-            {'night':'2019-01-18', 'leave':'2019-01-22', 'member':'Glenn', 'where':'master'},
-            {'night':'2019-01-18', 'leave':'2019-01-20', 'member':'Erin', 'where':'loft'},
-            {'night':'2019-01-19', 'leave':'2019-01-20', 'member':'Bob +1', 'where':'middle'},
-            {'night':'2019-01-21', 'leave':'2019-01-25', 'member':'James', 'where':'in-law'},
-            {'night':'2019-01-25', 'leave':'2019-01-27', 'member':'Mark +1', 'where':'middle, loft'},
-            {'night':'2019-01-25', 'leave':'2019-01-27', 'member':'Glenn', 'where':'in-law'},
-            {'night':'2019-01-25', 'leave':'2019-02-01', 'member':'James', 'where':'bunk'},
-            {'night':'2019-01-26', 'leave':'2019-01-27', 'member':'Bob', 'where':'master'},
-            {'night':'2019-01-27', 'leave':'2019-02-01', 'member':'Jon', 'where':'in-law'},
-            {'night':'2019-02-04', 'leave':'2019-02-06', 'member':'Mark', 'where':'master'},
-            {'night':'2019-02-05', 'leave':'2019-02-08', 'member':'Jon', 'where':'in-law'},
-            {'night':'2019-02-08', 'leave':'2019-02-10', 'member':'Mark', 'where':''},
-            {'night':'2019-02-09', 'leave':'2019-02-10', 'member':'Bob', 'where':''}
-        ]
+        dates_raw = read_test_dates_raw('test.json')
         # start in the middle of the test data
         test_shift = datetime.datetime.strptime(dates_raw[len(dates_raw)//2]['night'], '%Y-%m-%d')
         opts['--year'] = str(datetime.datetime.strptime(dates_raw[0]['night'], '%Y-%m-%d').year)
@@ -594,7 +584,7 @@ def main(opts):         #pylint: disable=R0915
 
     if opts['--peak']:
         nights_extra = NIGHTS_PEAK[opts['--year']][2:]     # ignore Fri, Sat entries
-        print('\nPeak nights, excluding Friday and Saturday nights:', end='')
+        print('\nPeak nights starting %s, excluding Fri & Sat nights:'%opts['--year'], end='')
         str_peak = ', '.join(['%s%s'%('' if i%8 != 0 else '\n   ',
                                       x) for i, x in enumerate(nights_extra)])
         print(str_peak)

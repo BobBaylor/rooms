@@ -27,6 +27,3 @@ $ 140        Bob: 12/22, 12/23, 12/24, 12/25
 $ 140      total
 ```
 Use -h to see all the switches. This script has been tested on Python 3.4.2 on a raspberry pi and 3.7.4 on Windoze and OSX. use 'pip install -r requirements.txt' to install the required libs.
-
-## How do I join the ski lease?
-Contact me. I'm ski boy bob on gmail
